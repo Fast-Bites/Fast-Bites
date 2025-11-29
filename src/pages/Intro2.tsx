@@ -1,16 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 
-const Intro1: React.FC = () => {
+const Intro2: React.FC = () => {
   const navigate = useNavigate();
   const steps = [0, 1, 2, 3];
-  const currentStep = 0;
+  const currentStep = 1;
 
   return (
     <div className="w-full min-h-screen bg-background relative font-[var(--font-poppins)]">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/assets/hyang-imant-YBkm-PnrSDI-unsplash 1.png')` }}
+        style={{ backgroundImage: `url('/assets/joshua-lawrence-o_kNmj-6acM-unsplash 1.png')` }}
       />
       
       {/* Content */}
@@ -49,19 +49,18 @@ const Intro1: React.FC = () => {
           <div className="w-full bg-black px-6 pb-8">
             {/* Heading */}
             <h1 className="text-[1.75rem] font-light text-foreground leading-tight mb-3">
-              Introducing you to <br />
-              <span className="text-accent">fast delivery.</span>{' '}
-              Build meal step by step.
+              Delivered in minutes,{' '}
+              <span className="text-accent">avoid delay.</span>{' '}
             </h1>
             
             {/* Subtext */}
             <p className="text-muted-foreground text-xs mb-16">
-              Each bite filled with flavour. From anywhere in your city
+              We put the <strong>fast</strong> in food. Enjoy your hot meals.
             </p>
             
             {/* Next Button */}
             <button 
-              onClick={() => navigate('/intro2')}
+              onClick={() => navigate('/intro3')}
               className="w-full py-4 bg-primary text-primary-foreground rounded-full text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity"
             >
               Next
@@ -73,5 +72,5 @@ const Intro1: React.FC = () => {
   );
 };
 
-export default Intro1;
+export default Intro2;
 
