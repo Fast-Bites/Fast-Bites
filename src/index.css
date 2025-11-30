@@ -7,7 +7,7 @@
   --color-primary-foreground: hsl(0 0% 100%);
   --color-accent: hsl(54 100% 50%);
   --color-accent-foreground: hsl(0 0% 0%);
-  --color-muted: hsl(0 0% 30%);
+  --color-muted: hsl(0 0% 40%);
   --color-muted-foreground: hsl(0 0% 78%);
   --font-poppins: 'Poppins', sans-serif;
 }

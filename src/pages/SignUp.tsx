@@ -65,7 +65,7 @@ const SignUp: React.FC = () => {
 
         {/* Sign up text */}
         <p className="text-foreground text-sm text-center mb-8">
-          Don't have an account? <button className="font-semibold">Sign up</button>
+          Don't have an account? <button onClick={() => navigate('/signup-form')} className="font-semibold">Sign up</button>
         </p>
 
         {/* Log In Button */}

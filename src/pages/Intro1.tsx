@@ -32,7 +32,9 @@ const Intro1: React.FC = () => {
           </div>
           
           {/* Skip Button */}
-          <button className="text-foreground text-xs font-normal hover:opacity-80 transition-opacity">
+          <button 
+            onClick={() => navigate('/role-selection')}
+            className="text-foreground text-xs font-normal hover:opacity-80 transition-opacity">
             Skip
           </button>
         </div>
