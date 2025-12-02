@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/Button';
 
 const RoleSelection: React.FC = () => {
   const navigate = useNavigate();
@@ -9,7 +10,7 @@ const RoleSelection: React.FC = () => {
       <div className="flex-1 flex flex-col justify-center">
         {/* Heading */}
         <h1 className="text-3xl font-light text-foreground text-center mb-2">
-          Who are you?
+          Who Are You?
         </h1>
         
         {/* Subtext */}
@@ -20,28 +21,28 @@ const RoleSelection: React.FC = () => {
         {/* Role Buttons */}
         <div className="flex flex-col gap-5">
           {/* Customer Button - Primary filled */}
-          <button 
+          <Button 
             onClick={() => navigate('/signup')}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-full text-lg font-medium"
+            variant="primary"
           >
             Customer
-          </button>
+          </Button>
           
           {/* Rider Button - White outline */}
-          <button 
+          <Button 
             onClick={() => navigate('/signup')}
-            className="w-full py-4 bg-foreground text-background rounded-full text-lg font-medium"
+            variant="foreground"
           >
             Rider
-          </button>
+          </Button>
           
-          {/* Restaurant Button - Accent outline */}
-          <button 
+          {/* Restaurant Button - Accent */}
+          <Button 
             onClick={() => navigate('/signup')}
-            className="w-full py-4 bg-accent text-background rounded-full text-lg font-medium"
+            variant="accent"
           >
             Restaurant
-          </button>
+          </Button>
         </div>
       </div>
       

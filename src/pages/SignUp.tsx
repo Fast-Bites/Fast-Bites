@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/Button';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -32,35 +33,20 @@ const SignUp: React.FC = () => {
         {/* Social Sign Up Buttons */}
         <div className="flex flex-col gap-4">
           {/* Google Button */}
-          <button 
-            className="w-full py-4 bg-foreground text-background rounded-full text-base font-medium flex items-center justify-center gap-3"
+          <Button 
+            variant="foreground"
+            size="base"
+            icon="/assets/google.svg"
           >
-            <img src="/assets/google.svg" alt="Google" className="w-6 h-6" />
             Sign up with Google
-          </button>
-          
-          {/* Apple Button */}
-          <button 
-            className="w-full py-4 bg-foreground text-background rounded-full text-base font-medium flex items-center justify-center gap-3"
-          >
-            <img src="/assets/apple.svg" alt="Apple" className="w-6 h-6" />
-            Sign up with Apple
-          </button>
-          
-          {/* Facebook Button */}
-          <button 
-            className="w-full py-4 bg-foreground text-background rounded-full text-base font-medium flex items-center justify-center gap-3"
-          >
-            <img src="/assets/facebook.svg" alt="Facebook" className="w-6 h-6" />
-            Sign up with Facebook
-          </button>
+          </Button>
         </div>
 
         {/* Divider with Or */}
         <div className="flex items-center gap-4 my-8">
-          <div className="flex-1 h-px bg-muted"></div>
+          <div className="flex-1 h-px bg-foreground"></div>
           <span className="text-muted-foreground text-lg font-bold">Or</span>
-          <div className="flex-1 h-px bg-muted"></div>
+          <div className="flex-1 h-px bg-foreground"></div>
         </div>
 
         {/* Sign up text */}
@@ -69,11 +55,12 @@ const SignUp: React.FC = () => {
         </p>
 
         {/* Log In Button */}
-        <button 
-          className="w-full py-4 bg-primary text-primary-foreground rounded-full text-lg font-medium"
+        <Button 
+          onClick={() => navigate('/signin-form')}
+          variant="primary"
         >
-          Log In
-        </button>
+          Sign In
+        </Button>
       </div>
       
       {/* Footer */}

@@ -1,32 +1,52 @@
+import React from 'react';
+
 interface ButtonProps {
-  text: string;
-  backgroundColor?: string;
-  textColor?: string;
+  children: React.ReactNode;
+  variant?: 'primary' | 'foreground' | 'accent';
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  className?: string;
+  icon?: string;
+  size?: 'base' | 'lg';
 }
 
 const Button: React.FC<ButtonProps> = ({
-  text,
-  backgroundColor = '#646cff',
-  textColor = '#ffffff',
+  children,
+  variant = 'primary',
   onClick,
   type = 'button',
   disabled = false,
+  className = '',
+  icon,
+  size = 'lg',
 }) => {
+  const baseStyles = 'w-full py-3 rounded-full font-medium transition-opacity';
+  
+  const variantStyles = {
+    primary: 'bg-primary text-primary-foreground hover:opacity-90 active:opacity-80',
+    foreground: 'bg-foreground text-background hover:opacity-90 active:opacity-80',
+    accent: 'bg-accent text-accent-foreground hover:opacity-90 active:opacity-80',
+  };
+  
+  const sizeStyles = {
+    base: 'text-base',
+    lg: 'text-lg',
+  };
+  
+  const disabledStyles = disabled 
+    ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50' 
+    : variantStyles[variant];
+
   return (
     <button
-      className="w-full px-4 py-4 border-none rounded-xl text-base font-medium text-center cursor-pointer transition-opacity duration-200 ease-in-out font-inherit disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:opacity-80 disabled:hover:opacity-50 disabled:active:opacity-50"
-      style={{
-        backgroundColor: backgroundColor,
-        color: textColor,
-      }}
-      onClick={onClick}
       type={type}
+      onClick={onClick}
       disabled={disabled}
+      className={`${baseStyles} ${sizeStyles[size]} ${disabledStyles} ${icon ? 'flex items-center justify-center gap-3' : ''} ${className}`}
     >
-      {text}
+      {icon && <img src={icon} alt="" className="w-6 h-6" />}
+      {children}
     </button>
   );
 };

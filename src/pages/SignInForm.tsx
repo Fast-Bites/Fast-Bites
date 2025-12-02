@@ -2,21 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 
-const SignUpForm: React.FC = () => {
+const SignInForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-
-  const isPasswordValid = password.length >= 6;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isPasswordValid) {
-      return;
-    }
-    navigate('/signup-form-2');
-  };
 
   return (
     <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
@@ -41,22 +31,21 @@ const SignUpForm: React.FC = () => {
 
       {/* Heading */}
       <h1 className="text-3xl font-bold text-foreground mb-1">
-        Sign Up
+        Sign in
       </h1>
       
       {/* Subtext */}
       <p className="text-muted-foreground text-sm mb-6">
-        Create an account
+        Welcome back
       </p>
 
       {/* Progress Bar */}
       <div className="flex mb-10">
-        <div className="flex-1 h-1 bg-primary rounded-full"></div>
-        <div className="flex-1 h-1 bg-foreground rounded-full"></div>
+        <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="flex flex-col">
+      <form className="flex flex-col">
         {/* Email Field */}
         <label className="text-foreground text-sm mb-2">
           Email Address
@@ -77,7 +66,7 @@ const SignUpForm: React.FC = () => {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Minimum of 6 characters"
+          placeholder="E.g joHnoE123@"
           minLength={6}
           className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
         />
@@ -115,13 +104,20 @@ const SignUpForm: React.FC = () => {
         {/* Continue Button */}
         <Button 
           type="submit"
-          disabled={!isPasswordValid}
           variant="primary"
           className="mb-6"
         >
           Continue
         </Button>
       </form>
+
+      {/* Forgot Password */}
+        <button
+          onClick={() => navigate('/forgot-password')}
+          className="text-foreground text-sm text-primary mb-5 text-left"
+        >
+          Forgot Password?
+        </button>
 
       {/* Divider with Or */}
       {/* <div className="flex items-center gap-4 mb-6">
@@ -178,4 +174,4 @@ const SignUpForm: React.FC = () => {
   );
 };
 
-export default SignUpForm;
+export default SignInForm;

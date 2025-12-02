@@ -64,7 +64,7 @@ const Intro1: React.FC = () => {
             {/* Next Button */}
             <button 
               onClick={() => navigate('/intro2')}
-              className="w-full py-4 bg-primary text-primary-foreground rounded-full text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity"
+              className="w-full py-3 bg-primary text-primary-foreground rounded-full text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity"
             >
               Next
             </button>
