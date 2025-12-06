@@ -8,6 +8,7 @@ interface ButtonProps {
   disabled?: boolean;
   className?: string;
   icon?: string;
+  iconSize?: string;
   size?: 'base' | 'lg';
 }
 
@@ -19,6 +20,7 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   className = '',
   icon,
+  iconSize = 'w-6 h-6',
   size = 'lg',
 }) => {
   const baseStyles = 'w-full py-3 rounded-full font-medium transition-opacity';
@@ -45,7 +47,7 @@ const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       className={`${baseStyles} ${sizeStyles[size]} ${disabledStyles} ${icon ? 'flex items-center justify-center gap-3' : ''} ${className}`}
     >
-      {icon && <img src={icon} alt="" className="w-6 h-6" />}
+      {icon && <img src={icon} alt="" className={iconSize} />}
       {children}
     </button>
   );

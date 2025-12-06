@@ -103,7 +103,7 @@ const SignUpForm2: React.FC = () => {
 
         {/* Continue Button */}
         <Button 
-          onClick={() => navigate('/complete')}
+          onClick={() => navigate('/location')}
           type="submit"
           disabled={!isFormValid}
           variant="primary"

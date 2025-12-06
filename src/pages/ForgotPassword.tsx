@@ -81,7 +81,7 @@ const ForgotPassword: React.FC = () => {
       </div>
 
       {/* OTP Input Boxes */}
-      <div className="flex gap-3 mb-8 justify-center">
+      <div className="flex  mb-8 justify-between">
         {otp.map((digit, index) => (
           <input
             key={index}
@@ -92,7 +92,7 @@ const ForgotPassword: React.FC = () => {
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            className="w-14 h-14 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary"
+            className="w-12 h-12 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary"
           />
         ))}
       </div>

@@ -31,7 +31,7 @@ const SignUp: React.FC = () => {
         </p>
         
         {/* Social Sign Up Buttons */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {/* Google Button */}
           <Button 
             variant="foreground"
@@ -40,18 +40,30 @@ const SignUp: React.FC = () => {
           >
             Sign up with Google
           </Button>
+
+          {/* Manual signup Button */}
+          <Button 
+            onClick={() => navigate('/signup-form')}
+            variant="foreground"
+            size="base"
+            icon="assets/Fast bite transparent I 1.svg"
+            iconSize="w-8 h-8 -my-1"
+          >
+            Sign up with Fast Bites
+          </Button>
         </div>
 
+
         {/* Divider with Or */}
-        <div className="flex items-center gap-4 my-8">
+        <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-foreground"></div>
           <span className="text-muted-foreground text-lg font-bold">Or</span>
           <div className="flex-1 h-px bg-foreground"></div>
         </div>
 
         {/* Sign up text */}
-        <p className="text-foreground text-sm text-center mb-8">
-          Don't have an account? <button onClick={() => navigate('/signup-form')} className="font-semibold">Sign up</button>
+        <p className="text-foreground text-sm text-center mb-2">
+          Already have an account?
         </p>
 
         {/* Log In Button */}

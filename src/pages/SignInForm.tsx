@@ -76,19 +76,17 @@ const SignInForm: React.FC = () => {
           <button
             type="button"
             onClick={() => setRememberMe(!rememberMe)}
-            className={`w-4 h-4 mr-2 border-2 border-primary rounded flex items-center justify-center transition-colors ${
-              rememberMe ? 'bg-primary' : 'bg-background'
-            }`}
+            className={`w-5 h-5 mr-2 border border-primary rounded flex items-center justify-center p-0.5 transition-colors bg-transparent`}
           >
             {rememberMe && (
               <svg 
                 viewBox="0 0 12 12" 
                 fill="none" 
-                className="w-3 h-3"
+                className="w-full h-full text-primary"
               >
                 <path 
                   d="M2 6L5 9L10 3" 
-                  stroke="white" 
+                  stroke="currentColor" 
                   strokeWidth="2" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
@@ -120,32 +118,23 @@ const SignInForm: React.FC = () => {
         </button>
 
       {/* Divider with Or */}
-      {/* <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-foreground"></div>
         <span className="text-muted-foreground text-lg font-bold">Or</span>
         <div className="flex-1 h-px bg-foreground"></div>
-      </div> */}
+      </div>
 
-      {/* Social Sign Up Buttons */}
-      {/* <div className="flex flex-col gap-4"> */}
+      {/* Social Sign In Buttons */}
+      <div className="flex flex-col gap-4">
         {/* Google Button */}
-        {/* <Button 
+        <Button 
           variant="foreground"
           size="base"
           icon="/assets/google.svg"
         >
-          Sign up with Google
+          Sign in with Google
         </Button>
-         */}
-        {/* Apple Button */}
-        {/* <Button 
-          variant="foreground"
-          size="base"
-          icon="/assets/apple.svg"
-        >
-          Sign up with Apple
-        </Button>
-      </div> */}
+      </div>
 
       {/* Spacer */}
       <div className="flex-1"></div>
