@@ -1,0 +1,31 @@
+from sqlalchemy import Column, String, DateTime, Boolean, Text
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+from database import Base
+
+class User(Base):
+    __tablename__ = "users"
+    
+    # ID comes from Supabase auth.users
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    email = Column(String(255), nullable=False)
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    phone = Column(String(20))
+    dob = Column(DateTime)
+    
+    # Profile fields
+    role = Column(String(20), default="customer")  # customer, rider, restaurant
+    is_verified = Column(Boolean, default=False)
+    profile_image = Column(Text)
+    address = Column(Text)
+    city = Column(String(100))
+    state = Column(String(100))
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login = Column(DateTime)
+
+
+

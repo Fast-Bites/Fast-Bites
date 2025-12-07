@@ -1,0 +1,17 @@
+backend/
+├── main.py              # FastAPI app
+├── config.py            # Settings
+├── database.py          # DB connection
+├── models/user.py       # User model
+├── schemas/user.py      # UserUpdate, UserResponse
+├── routers/profile.py   # Profile CRUD (JWT protected)
+├── services/jwt_auth.py # JWT verification
+└── migrations/          # Alembic
+
+
+; How to run migrations:
+alembic revision --autogenerate -m "<migration_name>"
+alembic upgrade head
+
+; How to run the app
+uvicorn main:app --reload --port <port_number>

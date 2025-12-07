@@ -1,21 +1,36 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { auth } from '../lib/api';
 
-const SignUpForm: React.FC = () => {
+const SignInForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const isPasswordValid = password.length >= 6;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isPasswordValid) {
+    if (!email || !password) return;
+
+    setLoading(true);
+    setError('');
+
+    const { data, error: authError } = await auth.signin(email, password);
+
+    setLoading(false);
+
+    if (authError) {
+      setError(authError);
       return;
     }
-    navigate('/signup-form-2');
+
+    if (data) {
+      // Success - navigate to home/dashboard
+      navigate('/location');
+    }
   };
 
   return (
@@ -41,18 +56,22 @@ const SignUpForm: React.FC = () => {
 
       {/* Heading */}
       <h1 className="text-3xl font-bold text-foreground mb-1">
-        Sign Up
+        Sign in
       </h1>
       
       {/* Subtext */}
       <p className="text-muted-foreground text-sm mb-6">
-        Create an account
+        Welcome back
       </p>
+
+      {/* Error Message */}
+      {error && (
+        <p className="text-red-500 text-sm mb-4">{error}</p>
+      )}
 
       {/* Progress Bar */}
       <div className="flex mb-10">
-        <div className="flex-1 h-1 bg-primary rounded-full"></div>
-        <div className="flex-1 h-1 bg-foreground rounded-full"></div>
+        <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
       </div>
 
       {/* Form */}
@@ -77,7 +96,7 @@ const SignUpForm: React.FC = () => {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Minimum of 6 characters"
+          placeholder="E.g joHnoE123@"
           minLength={6}
           className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
         />
@@ -113,41 +132,40 @@ const SignUpForm: React.FC = () => {
         {/* Continue Button */}
         <Button 
           type="submit"
-          disabled={!isPasswordValid}
+          disabled={!email || !password || loading}
           variant="primary"
           className="mb-6"
         >
-          Continue
+          {loading ? 'Signing in...' : 'Continue'}
         </Button>
       </form>
 
+      {/* Forgot Password */}
+        <button
+          onClick={() => navigate('/forgot-password')}
+          className="text-foreground text-sm text-primary mb-5 text-left"
+        >
+          Forgot Password?
+        </button>
+
       {/* Divider with Or */}
-      {/* <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-foreground"></div>
         <span className="text-muted-foreground text-lg font-bold">Or</span>
         <div className="flex-1 h-px bg-foreground"></div>
-      </div> */}
+      </div>
 
-      {/* Social Sign Up Buttons */}
-      {/* <div className="flex flex-col gap-4"> */}
+      {/* Social Sign In Buttons */}
+      <div className="flex flex-col gap-4">
         {/* Google Button */}
-        {/* <Button 
+        <Button 
           variant="foreground"
           size="base"
           icon="/assets/google.svg"
         >
-          Sign up with Google
+          Sign in with Google
         </Button>
-         */}
-        {/* Apple Button */}
-        {/* <Button 
-          variant="foreground"
-          size="base"
-          icon="/assets/apple.svg"
-        >
-          Sign up with Apple
-        </Button>
-      </div> */}
+      </div>
 
       {/* Spacer */}
       <div className="flex-1"></div>
@@ -176,4 +194,4 @@ const SignUpForm: React.FC = () => {
   );
 };
 
-export default SignUpForm;
+export default SignInForm;

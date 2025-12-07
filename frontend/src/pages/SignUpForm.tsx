@@ -1,12 +1,48 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { auth } from '../lib/api';
 
-const SignInForm: React.FC = () => {
+const SignUpForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const isPasswordValid = password.length >= 6;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPasswordValid) return;
+
+    setLoading(true);
+    setError('');
+
+    // Sign up with Supabase Auth
+    const { data, error: authError } = await auth.signup(email, password);
+
+    setLoading(false);
+
+    if (authError) {
+      setError(authError);
+      return;
+    }
+
+    if (data) {
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        // Email confirmation required
+        setError('Please check your email to confirm your account, then sign in.');
+        return;
+      }
+      
+      // Store for profile creation in next step
+      sessionStorage.setItem('signup_email', email);
+      navigate('/signup-form-2');
+    }
+  };
 
   return (
     <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
@@ -31,21 +67,27 @@ const SignInForm: React.FC = () => {
 
       {/* Heading */}
       <h1 className="text-3xl font-bold text-foreground mb-1">
-        Sign in
+        Sign Up
       </h1>
       
       {/* Subtext */}
       <p className="text-muted-foreground text-sm mb-6">
-        Welcome back
+        Create an account
       </p>
+
+      {/* Error Message */}
+      {error && (
+        <p className="text-red-500 text-sm mb-4">{error}</p>
+      )}
 
       {/* Progress Bar */}
       <div className="flex mb-10">
-        <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
+        <div className="flex-1 h-1 bg-primary rounded-full"></div>
+        <div className="flex-1 h-1 bg-foreground rounded-full"></div>
       </div>
 
       {/* Form */}
-      <form className="flex flex-col">
+      <form onSubmit={handleSubmit} className="flex flex-col">
         {/* Email Field */}
         <label className="text-foreground text-sm mb-2">
           Email Address
@@ -66,7 +108,7 @@ const SignInForm: React.FC = () => {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="E.g joHnoE123@"
+          placeholder="Minimum of 6 characters"
           minLength={6}
           className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
         />
@@ -102,39 +144,41 @@ const SignInForm: React.FC = () => {
         {/* Continue Button */}
         <Button 
           type="submit"
+          disabled={!isPasswordValid || loading}
           variant="primary"
           className="mb-6"
         >
-          Continue
+          {loading ? 'Creating account...' : 'Continue'}
         </Button>
       </form>
 
-      {/* Forgot Password */}
-        <button
-          onClick={() => navigate('/forgot-password')}
-          className="text-foreground text-sm text-primary mb-5 text-left"
-        >
-          Forgot Password?
-        </button>
-
       {/* Divider with Or */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-foreground"></div>
         <span className="text-muted-foreground text-lg font-bold">Or</span>
         <div className="flex-1 h-px bg-foreground"></div>
-      </div>
+      </div> */}
 
-      {/* Social Sign In Buttons */}
-      <div className="flex flex-col gap-4">
+      {/* Social Sign Up Buttons */}
+      {/* <div className="flex flex-col gap-4"> */}
         {/* Google Button */}
-        <Button 
+        {/* <Button 
           variant="foreground"
           size="base"
           icon="/assets/google.svg"
         >
-          Sign in with Google
+          Sign up with Google
         </Button>
-      </div>
+         */}
+        {/* Apple Button */}
+        {/* <Button 
+          variant="foreground"
+          size="base"
+          icon="/assets/apple.svg"
+        >
+          Sign up with Apple
+        </Button>
+      </div> */}
 
       {/* Spacer */}
       <div className="flex-1"></div>
@@ -163,4 +207,4 @@ const SignInForm: React.FC = () => {
   );
 };
 
-export default SignInForm;
+export default SignUpForm;

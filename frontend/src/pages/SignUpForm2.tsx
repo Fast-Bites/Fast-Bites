@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { api } from '../lib/api';
 
 const SignUpForm2: React.FC = () => {
   const navigate = useNavigate();
@@ -8,14 +9,42 @@ const SignUpForm2: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const isFormValid = firstName && lastName && dateOfBirth && phoneNumber;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
-    // TODO: Implement sign up completion logic
-    console.log('Sign up complete:', { firstName, lastName, dateOfBirth, phoneNumber });
+
+    setLoading(true);
+    setError('');
+
+    const role = sessionStorage.getItem('signup_role') || 'customer';
+    
+    // Create profile via backend (uses Supabase JWT for auth)
+    const { error: apiError } = await api.createProfile({
+      first_name: firstName,
+      last_name: lastName,
+      phone: phoneNumber,
+      dob: dateOfBirth || undefined,
+      role,
+    });
+
+    setLoading(false);
+
+    if (apiError) {
+      setError(apiError);
+      return;
+    }
+
+    // Clear session storage
+    sessionStorage.removeItem('signup_email');
+    sessionStorage.removeItem('signup_role');
+
+    // Success - navigate to next page
+    navigate('/location');
   };
 
   return (
@@ -53,6 +82,11 @@ const SignUpForm2: React.FC = () => {
       <div className="flex mb-10">
         <div className="flex-1 h-1 bg-primary rounded-full"></div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <p className="text-red-500 text-sm mb-4">{error}</p>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col">
@@ -103,13 +137,12 @@ const SignUpForm2: React.FC = () => {
 
         {/* Continue Button */}
         <Button 
-          onClick={() => navigate('/location')}
           type="submit"
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
           variant="primary"
           className="mb-6"
         >
-          Continue
+          {loading ? 'Creating account...' : 'Continue'}
         </Button>
       </form>
 

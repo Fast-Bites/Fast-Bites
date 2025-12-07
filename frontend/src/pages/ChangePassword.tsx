@@ -1,23 +1,37 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { auth } from '../lib/api';
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [repeatPassword, setRepeatPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const isPasswordValid = newPassword.length >= 6;
   const doPasswordsMatch = newPassword === repeatPassword && repeatPassword.length > 0;
   const canProceed = isPasswordValid && doPasswordsMatch;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canProceed) {
+    if (!canProceed) return;
+
+    setLoading(true);
+    setError('');
+
+    const { error: authError } = await auth.updatePassword(newPassword);
+
+    setLoading(false);
+
+    if (authError) {
+      setError(authError);
       return;
     }
-    // TODO: Implement password change logic
-    console.log('Password changed successfully');
+
+    // Success - navigate to sign in
+    navigate('/signin-form');
   };
 
   return (
@@ -48,8 +62,11 @@ const ChangePassword: React.FC = () => {
       
       {/* Subtext */}
       <p className="text-muted-foreground text-sm mb-6">
-        Don’t forget it this time, John Doe.
+        Create a new secure password.
       </p>
+
+      {/* Error Message */}
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
       {/* Progress Bar */}
       <div className="flex mb-10">
@@ -100,11 +117,11 @@ const ChangePassword: React.FC = () => {
         {/* Continue Button */}
         <Button 
           type="submit"
-          disabled={!canProceed}
+          disabled={!canProceed || loading}
           variant="primary"
           className="mb-6"
         >
-          Continue
+          {loading ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
     </div>

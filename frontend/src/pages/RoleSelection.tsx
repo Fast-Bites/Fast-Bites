@@ -4,6 +4,11 @@ import Button from '../components/Button';
 const RoleSelection: React.FC = () => {
   const navigate = useNavigate();
 
+  const selectRole = (role: string) => {
+    sessionStorage.setItem('signup_role', role);
+    navigate('/signup');
+  };
+
   return (
     <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-6">
       {/* Spacer to center content vertically */}
@@ -22,7 +27,7 @@ const RoleSelection: React.FC = () => {
         <div className="flex flex-col gap-5">
           {/* Customer Button - Primary filled */}
           <Button 
-            onClick={() => navigate('/signup')}
+            onClick={() => selectRole('customer')}
             variant="primary"
           >
             Customer
@@ -30,7 +35,7 @@ const RoleSelection: React.FC = () => {
           
           {/* Rider Button - White outline */}
           <Button 
-            onClick={() => navigate('/signup')}
+            onClick={() => selectRole('rider')}
             variant="foreground"
           >
             Rider
@@ -38,7 +43,7 @@ const RoleSelection: React.FC = () => {
           
           {/* Restaurant Button - Accent */}
           <Button 
-            onClick={() => navigate('/signup')}
+            onClick={() => selectRole('restaurant')}
             variant="accent"
           >
             Restaurant
