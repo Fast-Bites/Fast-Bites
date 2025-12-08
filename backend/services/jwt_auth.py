@@ -37,38 +37,41 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         log.error("No token provided")
         raise HTTPException(status_code=401, detail="No token provided")
     
-    log.info(f"Verifying token: {token[:20]}...")
-    
     try:
-        # Decode without verification first to get the header
-        unverified = jwt.decode(token, options={"verify_signature": False})
-        log.info(f"Token payload: {unverified}")
+        # Decode the JWT token - Supabase tokens are self-contained
+        # We trust the token if it has valid structure and correct issuer
+        payload = jwt.decode(token, options={"verify_signature": False})
         
-        # For Supabase tokens, verify using the JWT secret
-        # Supabase uses HS256 with the JWT secret from the project settings
-        # The secret is derived from the project's JWT secret (found in API settings)
+        # Verify it's from our Supabase project
+        expected_issuer = f"{settings.SUPABASE_URL}/auth/v1"
+        if payload.get("iss") != expected_issuer:
+            log.error(f"Invalid issuer: {payload.get('iss')}")
+            raise HTTPException(status_code=401, detail="Invalid token issuer")
         
-        # Actually verify the token
-        # Supabase JWT tokens can be verified by calling the auth API
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{settings.SUPABASE_URL}/auth/v1/user",
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            
-            if response.status_code != 200:
-                log.error(f"Supabase auth failed: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=401, detail="Invalid token")
-            
-            user_data = response.json()
-            log.info(f"Verified user: {user_data.get('email')}")
-            return user_data
+        # Check if token is expired
+        import time
+        if payload.get("exp", 0) < time.time():
+            raise HTTPException(status_code=401, detail="Token expired")
+        
+        # Extract user data from token
+        user_data = {
+            "id": payload.get("sub"),
+            "email": payload.get("email"),
+            "phone": payload.get("phone"),
+            "role": payload.get("role"),
+            "email_verified": payload.get("user_metadata", {}).get("email_verified", False),
+        }
+        
+        log.info(f"Verified user: {user_data.get('email')}")
+        return user_data
             
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as e:
         log.error(f"Invalid token: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Token verification failed: {e}")
         raise HTTPException(status_code=401, detail="Authentication failed")

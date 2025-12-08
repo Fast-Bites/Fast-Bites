@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Text
+from sqlalchemy import Column, String, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from database import Base
@@ -16,7 +16,6 @@ class User(Base):
     
     # Profile fields
     role = Column(String(20), default="customer")  # customer, rider, restaurant
-    is_verified = Column(Boolean, default=False)
     profile_image = Column(Text)
     address = Column(Text)
     city = Column(String(100))
@@ -26,6 +25,3 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime)
-
-
-

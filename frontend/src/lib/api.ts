@@ -48,7 +48,24 @@ async function request<T>(
 // Auth - using Supabase
 export const auth = {
   signup: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/signup-form-2`,
+      }
+    });
+    if (error) return { error: error.message };
+    return { data };
+  },
+
+  // Verify OTP code from email
+  verifyOtp: async (email: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
     if (error) return { error: error.message };
     return { data };
   },
@@ -87,6 +104,15 @@ export const auth = {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) return { error: error.message };
     return { data: user };
+  },
+
+  resendConfirmation: async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+    if (error) return { error: error.message };
+    return { data: { message: 'Confirmation email sent' } };
   },
 };
 

@@ -10,6 +10,7 @@ const SignUpForm: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const isPasswordValid = password.length >= 6;
 
@@ -26,23 +27,30 @@ const SignUpForm: React.FC = () => {
     setLoading(false);
 
     if (authError) {
+      // If user already exists, show sign in option
+      if (authError.includes('already registered') || authError.includes('already exists')) {
+        setError('This email is already registered. Please sign in instead.');
+        return;
+      }
       setError(authError);
       return;
     }
 
     if (data) {
+      // Store email for verification/profile steps
+      sessionStorage.setItem('signup_email', email);
+      
       // Check if email confirmation is required
       if (data.user && !data.session) {
-        // Email confirmation required
-        setError('Please check your email to confirm your account, then sign in.');
+        setConfirmationSent(true);
         return;
       }
       
-      // Store for profile creation in next step
-      sessionStorage.setItem('signup_email', email);
+      // No confirmation needed - go straight to profile
       navigate('/signup-form-2');
     }
   };
+
 
   return (
     <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
@@ -78,6 +86,31 @@ const SignUpForm: React.FC = () => {
       {/* Error Message */}
       {error && (
         <p className="text-red-500 text-sm mb-4">{error}</p>
+      )}
+
+      {/* Confirmation Sent Message */}
+      {confirmationSent && (
+        <div className="bg-green-900/30 border border-green-500 rounded-xl p-4 mb-6">
+          <p className="text-green-400 text-sm mb-3">
+            ✓ Verification email sent to <strong>{email}</strong>
+          </p>
+          <p className="text-muted-foreground text-xs mb-4">
+            Choose how to verify:
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button 
+              type="button"
+              onClick={() => navigate('/verify-email')}
+              variant="primary"
+              className="w-full"
+            >
+              Enter 6-digit Code
+            </Button>
+            <p className="text-muted-foreground text-xs text-center">
+              — or click the link in your email —
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Progress Bar */}

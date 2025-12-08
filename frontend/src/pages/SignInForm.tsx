@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
-import { auth } from '../lib/api';
+import { auth, api } from '../lib/api';
 
 const SignInForm: React.FC = () => {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ const SignInForm: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showRegisterLink, setShowRegisterLink] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,19 +18,42 @@ const SignInForm: React.FC = () => {
 
     setLoading(true);
     setError('');
+    setShowRegisterLink(false);
 
     const { data, error: authError } = await auth.signin(email, password);
 
     setLoading(false);
 
     if (authError) {
-      setError(authError);
+      // Supabase returns generic "Invalid login credentials" for security
+      // We show a user-friendly message that covers both cases
+      if (authError.toLowerCase().includes('invalid')) {
+        setError('Invalid email or password. Please try again.');
+        setShowRegisterLink(true);
+      } else if (authError.toLowerCase().includes('email not confirmed')) {
+        setError('Please confirm your email before signing in.');
+      } else {
+        setError(authError);
+      }
       return;
     }
 
     if (data) {
-      // Success - navigate to home/dashboard
-      navigate('/location');
+      // Wait a moment for session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if user has a profile
+      const { data: profile, error: profileError } = await api.getProfile();
+      
+      console.log('Profile check:', { profile, profileError }); // Debug log
+      
+      if (profileError) {
+        // No profile yet - go to complete signup
+        navigate('/signup-form-2');
+      } else {
+        // Has profile - go to main app
+        navigate('/location');
+      }
     }
   };
 
@@ -66,7 +90,17 @@ const SignInForm: React.FC = () => {
 
       {/* Error Message */}
       {error && (
-        <p className="text-red-500 text-sm mb-4">{error}</p>
+        <div className="mb-4">
+          <p className="text-red-500 text-sm">{error}</p>
+          {showRegisterLink && (
+            <button
+              onClick={() => navigate('/signup')}
+              className="text-primary text-sm underline mt-2"
+            >
+              Don't have an account? Sign up →
+            </button>
+          )}
+        </div>
       )}
 
       {/* Progress Bar */}

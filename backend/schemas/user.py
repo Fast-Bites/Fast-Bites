@@ -21,7 +21,6 @@ class UserResponse(BaseModel):
     last_name: str
     phone: Optional[str]
     role: str
-    is_verified: bool
     created_at: datetime
     
     class Config:

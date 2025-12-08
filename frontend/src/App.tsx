@@ -9,6 +9,7 @@ import RoleSelection from './pages/RoleSelection';
 import SignUp from './pages/SignUp';
 import SignUpForm from './pages/SignUpForm';
 import SignUpForm2 from './pages/SignUpForm2';
+import VerifyEmail from './pages/VerifyEmail';
 import Location from './pages/Location';
 import Map from './pages/Map';
 import Complete from './pages/Complete';
@@ -32,6 +33,7 @@ function App() {
           <Route path="/role-selection" element={<RoleSelection />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signup-form" element={<SignUpForm />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/signup-form-2" element={<SignUpForm2 />} />
           <Route path="/location" element={<Location />} />
           <Route path="/map" element={<Map />} />
