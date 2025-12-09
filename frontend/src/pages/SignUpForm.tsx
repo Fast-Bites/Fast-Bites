@@ -24,6 +24,8 @@ const SignUpForm: React.FC = () => {
     // Sign up with Supabase Auth
     const { data, error: authError } = await auth.signup(email, password);
 
+    console.log('Signup response:', { data, authError }); // Debug
+
     setLoading(false);
 
     if (authError) {
@@ -37,6 +39,12 @@ const SignUpForm: React.FC = () => {
     }
 
     if (data) {
+      // Check if email already exists (Supabase returns user with empty identities)
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError('This email is already registered. Please sign in instead.');
+        return;
+      }
+      
       // Store email for verification/profile steps
       sessionStorage.setItem('signup_email', email);
       

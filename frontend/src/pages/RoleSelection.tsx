@@ -5,7 +5,7 @@ const RoleSelection: React.FC = () => {
   const navigate = useNavigate();
 
   const selectRole = (role: string) => {
-    sessionStorage.setItem('signup_role', role);
+    sessionStorage.setItem('selected_role', role);
     navigate('/signup');
   };
 

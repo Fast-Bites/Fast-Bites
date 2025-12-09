@@ -21,7 +21,7 @@ const SignUpForm2: React.FC = () => {
     setLoading(true);
     setError('');
 
-    const role = sessionStorage.getItem('signup_role') || 'customer';
+    const role = sessionStorage.getItem('selected_role') || 'customer';
     
     // Create profile via backend (uses Supabase JWT for auth)
     const { error: apiError } = await api.createProfile({
@@ -41,7 +41,7 @@ const SignUpForm2: React.FC = () => {
 
     // Clear session storage
     sessionStorage.removeItem('signup_email');
-    sessionStorage.removeItem('signup_role');
+    sessionStorage.removeItem('selected_role');
 
     // Success - navigate to next page
     navigate('/location');

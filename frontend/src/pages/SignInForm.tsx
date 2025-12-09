@@ -43,7 +43,10 @@ const SignInForm: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Check if user has a profile
-      const { data: profile, error: profileError } = await api.getProfile();
+      const { data: profile, error: profileError } = await api.getProfile() as { 
+        data?: { role?: string }; 
+        error?: string 
+      };
       
       console.log('Profile check:', { profile, profileError }); // Debug log
       
@@ -51,7 +54,20 @@ const SignInForm: React.FC = () => {
         // No profile yet - go to complete signup
         navigate('/signup-form-2');
       } else {
-        // Has profile - go to main app
+        // Check if role matches
+        const selectedRole = sessionStorage.getItem('selected_role');
+        console.log('Role check:', { selectedRole, profileRole: profile?.role }); // Debug
+        
+        if (selectedRole && profile?.role) {
+          if (profile.role !== selectedRole) {
+            // Role mismatch - sign out and show error
+            await auth.signout();
+            setError(`Incorrect role. Please select the correct role.`);
+            return;
+          }
+        }
+        
+        // Has profile with correct role - go to main app
         navigate('/location');
       }
     }

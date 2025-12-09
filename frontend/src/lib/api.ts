@@ -83,7 +83,27 @@ export const auth = {
   },
 
   forgotPassword: async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/change-password`,
+    });
+    if (error) return { error: error.message };
+    return { data: { message: 'Reset email sent' } };
+  },
+
+  verifyRecoveryOtp: async (email: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+    if (error) return { error: error.message };
+    return { data };
+  },
+
+  resendRecoveryEmail: async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/change-password`,
+    });
     if (error) return { error: error.message };
     return { data: { message: 'Reset email sent' } };
   },
