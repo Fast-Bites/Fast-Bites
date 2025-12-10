@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text
+from sqlalchemy import Column, String, DateTime, Date, Text
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from database import Base
@@ -12,7 +12,10 @@ class User(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     phone = Column(String(20))
-    dob = Column(DateTime)
+    dob = Column(Date)  # Date only, no time
+    
+    # OAuth
+    google_id = Column(String(255), unique=True, nullable=True)  # For Google OAuth
     
     # Profile fields
     role = Column(String(20), default="customer")  # customer, rider, restaurant
@@ -22,6 +25,4 @@ class User(Base):
     state = Column(String(100))
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_login = Column(DateTime)

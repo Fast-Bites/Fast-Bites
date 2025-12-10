@@ -1,13 +1,20 @@
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import date
 from uuid import UUID
 from typing import Optional
+
+class UserCreate(BaseModel):
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    dob: Optional[date] = None
+    role: str = "customer"
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
-    dob: Optional[datetime] = None
+    dob: Optional[date] = None
     role: Optional[str] = None
     profile_image: Optional[str] = None
     address: Optional[str] = None
@@ -20,11 +27,12 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str]
+    dob: Optional[date]
+    google_id: Optional[str]
     role: str
-    created_at: datetime
+    address: Optional[str]
+    city: Optional[str]
+    state: Optional[str]
     
     class Config:
         from_attributes = True
-
-
-
