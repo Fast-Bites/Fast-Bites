@@ -1,24 +1,42 @@
-import Button from '../components/Button'; 
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import Button from '../components/Button';
+import { api } from '../lib/api';
 
 const Complete: React.FC = () => {
+    const navigate = useNavigate();
+    const [firstName, setFirstName] = useState('');
+
+    useEffect(() => {
+      // Get user's first name from profile
+      const fetchProfile = async () => {
+        const { data } = await api.getProfile() as { data?: { first_name?: string } };
+        if (data?.first_name) {
+          setFirstName(data.first_name);
+        }
+      };
+      fetchProfile();
+    }, []);
+
     return (
         <div 
           className={`w-full min-h-screen bg-black flex flex-col items-center justify-center p-2 gap-6`}
         >
           <img 
-            src="/public/assets/checked 1.png" 
-            alt="Fast Bites" 
+            src="/assets/checked 1.png" 
+            alt="Success" 
             className="w-24 h-auto object-contain" 
           />
 
           <p className="text-muted-foreground text-sm mb-6 text-center">
-            You’re all done.
+            You're all done.
             <br />
-            Enjoy your experience, John Doe.
+            Enjoy your experience{firstName ? `, ${firstName}` : ''}.
           </p>
 
           <Button
             variant="primary"
+            onClick={() => navigate('/home')}
           >
             Explore
           </Button>

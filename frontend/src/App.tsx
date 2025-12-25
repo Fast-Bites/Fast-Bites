@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MobileOnly from './components/MobileOnly';
+import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Intro1 from './pages/Intro1';
 import Intro2 from './pages/Intro2';
@@ -18,6 +19,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ChangePassword from './pages/ChangePassword';
 import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import Home from './pages/Home';
 import './App.css';
 
 function App() {
@@ -43,6 +45,9 @@ function App() {
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          
+          {/* Protected Routes - require authentication */}
+          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         </Routes>
       </MobileOnly>
     </BrowserRouter>

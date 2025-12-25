@@ -44,7 +44,7 @@ const SignInForm: React.FC = () => {
       
       // Check if user has a profile
       const { data: profile, error: profileError } = await api.getProfile() as { 
-        data?: { role?: string }; 
+        data?: { role?: string; address?: string }; 
         error?: string 
       };
       
@@ -67,8 +67,14 @@ const SignInForm: React.FC = () => {
           }
         }
         
-        // Has profile with correct role - go to main app
-        navigate('/location');
+        // Check if user has completed setup (has address)
+        if (profile?.address) {
+          // Fully set up - go to home
+          navigate('/home');
+        } else {
+          // Needs to set location
+          navigate('/location');
+        }
       }
     }
   };
