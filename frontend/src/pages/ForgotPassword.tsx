@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import PageLayout from '../components/PageLayout';
+import LogoHeader from '../components/LogoHeader';
 import { auth } from '../lib/api';
 
 const ForgotPassword: React.FC = () => {
@@ -102,39 +104,17 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
-      {/* Back Button */}
-      <div className="pt-12">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-foreground text-4xl"
-        >
-          &#x3c;
-        </button>
-      </div>
-
-      {/* Logo */}
-      <div className="mt-6 mb-2">
-        <img 
-          src="/logo/Fast bite transparent I.png" 
-          alt="Fast Bites" 
-          className="h-[5rem] object-contain"
-        />
-      </div>
-
-      {/* Heading */}
-      <h1 className="text-3xl font-bold text-foreground mb-1">
-        Recovery
-      </h1>
-      
-      {/* Subtext */}
-      <p className="text-muted-foreground text-sm mb-6">
-        {!emailSent 
-          ? 'Enter your email to receive a password reset link.' 
-          : showOtpInput
-            ? <>Let’s help you continue your experience.</>
-            : 'Check your email for the reset link or enter the code.'}
-      </p>
+    <PageLayout showHeader={true} showFooter={false}>
+      <LogoHeader 
+        title="Recovery" 
+        subtitle={
+          !emailSent 
+            ? 'Enter your email to receive a password reset link.' 
+            : showOtpInput
+              ? "Let's help you continue your experience."
+              : 'Check your email for the reset link or enter the code.'
+        } 
+      />
 
       {/* Error Message */}
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -252,7 +232,7 @@ const ForgotPassword: React.FC = () => {
 
       {/* Spacer */}
       <div className="flex-1"></div>
-    </div>
+    </PageLayout>
   );
 };
 

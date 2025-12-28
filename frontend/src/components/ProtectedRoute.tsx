@@ -8,35 +8,96 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const navigate = useNavigate();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [status, setStatus] = useState<'checking' | 'authenticated' | 'redirecting'>('checking');
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: session } = await auth.getSession();
       
       if (!session) {
-        // Not logged in - redirect to role selection
-        navigate('/role-selection', { replace: true });
+        // Not logged in - show message then redirect
+        setStatus('redirecting');
+        
+        // Wait a moment so user can read the message
+        setTimeout(() => {
+          navigate('/role-selection', { replace: true });
+        }, 5000);
       } else {
-        setIsAuthenticated(true);
+        setStatus('authenticated');
       }
-      setIsChecking(false);
     };
 
     checkAuth();
   }, [navigate]);
 
-  if (isChecking) {
+  // Loading state - checking authentication
+  if (status === 'checking') {
     return (
-      <div className="w-full min-h-screen bg-background flex items-center justify-center">
-        <div className="text-foreground">Loading...</div>
+      <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center gap-6">
+        {/* Rotating Logo */}
+        <div className="relative">
+          <img 
+            src="/logo/Fast bite transparent I.png" 
+            alt="Fast Bites" 
+            className="w-28 h-28 object-contain animate-spin-slow"
+          />
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+        </div>
+        
+        {/* Loading text */}
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-foreground font-medium text-lg">Please wait</p>
+          <div className="flex gap-1">
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
+  // Not authenticated - show message before redirect
+  if (status === 'redirecting') {
+    return (
+      <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center gap-6 px-8">
+        {/* Logo */}
+        <img 
+          src="/logo/Fast bite transparent I.png" 
+          alt="Fast Bites" 
+          className="w-28 h-28 object-contain opacity-50"
+        />
+        
+        {/* Access message */}
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <svg 
+              className="w-6 h-6 text-primary" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" 
+              />
+            </svg>
+          </div>
+          <h2 className="text-foreground font-semibold text-xl">Sign in required</h2>
+          <p className="text-foreground/60 text-sm max-w-xs">
+            You need to be signed in to access this page. Redirecting you to sign in...
+          </p>
+        </div>
+
+        {/* Progress indicator */}
+        <div className="w-48 h-1 bg-foreground/10 rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full animate-progress" />
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

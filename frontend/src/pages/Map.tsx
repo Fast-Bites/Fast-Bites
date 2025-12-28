@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import Button from '../components/Button';
+import BackButton from '../components/BackButton';
 import LocationSearchInput from "../components/LocationSearchInput";
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import api from '../lib/api';
@@ -48,9 +49,13 @@ const Map: React.FC = () => {
   const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
 
   // All hooks must be called before any conditional returns
   const handleLocationSelect = useCallback((location: { address: string; lat: number; lng: number }) => {
+    // Close the search overlay
+    setSearchOverlayOpen(false);
+    
     // Get city and state from the address using geocoding
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location: { lat: location.lat, lng: location.lng } }, (results, status) => {
@@ -210,19 +215,31 @@ const Map: React.FC = () => {
       
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen pointer-events-none">
-        {/* Back Button */}
-        <div className="pt-12 px-6 pointer-events-auto">
-          <button 
-            onClick={() => navigate(-1)}
-            className="text-foreground text-4xl bg-primary rounded-full w-10 h-10 flex items-center justify-center"
-          >
-            &#x3c;
-          </button>
+        {/* Header - Back Button + Search Trigger */}
+        <div className="pt-8 px-4 pointer-events-auto">
+          <div className="flex items-center gap-3">
+            <BackButton variant="map" />
+            {/* Search trigger button - opens fullscreen search */}
+            <button
+              onClick={() => setSearchOverlayOpen(true)}
+              className="flex-1 min-w-0 flex items-center gap-3 bg-white rounded-full px-3 py-3 shadow-lg text-left overflow-hidden"
+            >
+              <svg className="w-[18px] h-[18px] text-black flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="flex-1 min-w-0 text-base font-sm truncate">
+                {selectedLocation ? selectedLocation.address : 'Input your location'}
+              </span>
+              <svg className="w-[18px] h-[18px] text-black flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
         </div>
         
         {/* Selected Location Display */}
         {selectedLocation && (
-          <div className="mx-6 mt-4 bg-black/80 backdrop-blur-sm rounded-xl p-3 pointer-events-auto">
+          <div className="mx-4 mt-4 bg-black/80 backdrop-blur-sm rounded-xl p-3 pointer-events-auto">
             <p className="text-foreground text-sm font-medium">
               📍 {selectedLocation.address}
             </p>
@@ -238,17 +255,14 @@ const Map: React.FC = () => {
         {/* Bottom Content */}
         <div className="relative w-full pointer-events-auto">
           {/* Black background section */}
-          <div className="w-full bg-black px-8 py-8 rounded-t-[3rem]">
-            {/* Location Search Input */}
-            <LocationSearchInput onLocationSelect={handleLocationSelect} />
-            
+          <div className="w-full bg-black px-4 py-8 rounded-t-[3rem]">
             {/* Error Message */}
             {error && (
               <p className="text-red-500 text-sm text-center mb-4">{error}</p>
             )}
             
             {/* Tap to select hint */}
-            <p className="text-muted-foreground text-xs text-center mb-4">
+            <p className="text-muted-foreground text-sm text-center mb-4">
               Or tap on the map to select a location
             </p>
             
@@ -258,11 +272,57 @@ const Map: React.FC = () => {
               onClick={handleConfirm}
               disabled={!selectedLocation || saving}
             >
-              {saving ? 'Saving...' : selectedLocation ? 'Confirm' : 'Select a Location'}
+              Confirm
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Search Overlay */}
+      {searchOverlayOpen && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          {/* Search Header */}
+          <div className="pt-8 px-4">
+            <LocationSearchInput 
+              onLocationSelect={handleLocationSelect}
+              fullscreenMode={true}
+              autoFocus={true}
+              className="flex-1"
+            />
+          </div>
+          
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Bottom Section */}
+          <div className="px-4 py-8 space-y-1">
+            {/* Progress Bar */}
+            <div className="h-1 bg-foreground rounded-full" />
+
+            {/* Choose on map */}
+            <div
+              className="flex items-center justify-center gap-2 w-full py-2"
+            >
+              <img 
+                src="assets/choose-map.png" 
+                alt="choose on map" 
+                className="w-4 h-4"
+              />
+              <span className="text-muted-foreground text-sm">
+                Choose on map
+              </span>
+            </div>
+            
+            {/* Back to Map Button */}
+            <Button 
+              variant="primary"
+              onClick={() => setSearchOverlayOpen(false)}
+            >
+              Back to Map
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

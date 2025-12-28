@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import PageLayout from '../components/PageLayout';
+import LogoHeader from '../components/LogoHeader';
 import { auth } from '../lib/api';
 
 const ChangePassword: React.FC = () => {
@@ -35,35 +37,8 @@ const ChangePassword: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
-      {/* Back Button */}
-      <div className="pt-12">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-foreground text-4xl"
-        >
-          &#x3c;
-        </button>
-      </div>
-
-      {/* Logo */}
-      <div className="mt-6 mb-2">
-        <img 
-          src="/logo/Fast bite transparent I.png" 
-          alt="Fast Bites" 
-          className="h-[5rem] object-contain"
-        />
-      </div>
-
-      {/* Heading */}
-      <h1 className="text-3xl font-bold text-foreground mb-1">
-        Change Password
-      </h1>
-      
-      {/* Subtext */}
-      <p className="text-muted-foreground text-sm mb-6">
-        Create a new secure password.
-      </p>
+    <PageLayout showHeader={true} showFooter={false}>
+      <LogoHeader title="Change Password" subtitle="Create a new secure password." />
 
       {/* Error Message */}
       {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -124,7 +99,10 @@ const ChangePassword: React.FC = () => {
           {loading ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
-    </div>
+
+      {/* Spacer */}
+      <div className="flex-1"></div>
+    </PageLayout>
   );
 };
 

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import PageLayout from '../components/PageLayout';
+import LogoHeader from '../components/LogoHeader';
 import { auth } from '../lib/api';
 
 const VerifyEmail: React.FC = () => {
@@ -82,35 +84,11 @@ const VerifyEmail: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
-      {/* Back Button */}
-      <div className="pt-12">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-foreground text-4xl"
-        >
-          &#x3c;
-        </button>
-      </div>
-
-      {/* Logo */}
-      <div className="mt-6 mb-2">
-        <img 
-          src="/logo/Fast bite transparent I.png" 
-          alt="Fast Bites" 
-          className="h-[5rem] object-contain"
-        />
-      </div>
-
-      {/* Heading */}
-      <h1 className="text-3xl font-bold text-foreground mb-1">
-        Verify Email
-      </h1>
-      
-      {/* Subtext */}
-      <p className="text-muted-foreground text-sm mb-6">
-        Enter the 6-digit code sent to <span className="text-primary">{email}</span>
-      </p>
+    <PageLayout showHeader={true} showFooter={false}>
+      <LogoHeader 
+        title="Verify Email" 
+        subtitle={<>Enter the 6-digit code sent to <span className="text-primary">{email}</span></>} 
+      />
 
       {/* Error Message */}
       {error && (
@@ -161,7 +139,7 @@ const VerifyEmail: React.FC = () => {
 
       {/* Spacer */}
       <div className="flex-1"></div>
-    </div>
+    </PageLayout>
   );
 };
 

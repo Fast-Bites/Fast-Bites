@@ -5,14 +5,15 @@ import { api } from '../lib/api';
 
 const Complete: React.FC = () => {
     const navigate = useNavigate();
-    const [firstName, setFirstName] = useState('');
+    const [fullName, setFullName] = useState('');
 
     useEffect(() => {
-      // Get user's first name from profile
+      // Get user's name from profile
       const fetchProfile = async () => {
-        const { data } = await api.getProfile() as { data?: { first_name?: string } };
-        if (data?.first_name) {
-          setFirstName(data.first_name);
+        const { data } = await api.getProfile() as { data?: { first_name?: string; last_name?: string } };
+        if (data) {
+          const name = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+          setFullName(name);
         }
       };
       fetchProfile();
@@ -31,7 +32,7 @@ const Complete: React.FC = () => {
           <p className="text-muted-foreground text-sm mb-6 text-center">
             You're all done.
             <br />
-            Enjoy your experience{firstName ? `, ${firstName}` : ''}.
+            Enjoy your experience{fullName ? `, ${fullName}` : ''}.
           </p>
 
           <Button

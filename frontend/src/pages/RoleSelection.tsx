@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import PageLayout from '../components/PageLayout';
 
 const RoleSelection: React.FC = () => {
   const navigate = useNavigate();
@@ -10,16 +11,19 @@ const RoleSelection: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-6">
-      {/* Spacer to center content vertically */}
-      <div className="flex-1 flex flex-col justify-center">
+    <PageLayout showHeader={false} showFooter={true}>
+      {/* Top spacer to balance footer */}
+      <div className="flex-1" />
+      
+      {/* Content centered vertically */}
+      <div className="flex flex-col justify-center">
         {/* Heading */}
         <h1 className="text-3xl font-light text-foreground text-center mb-2">
           Who Are You?
         </h1>
         
         {/* Subtext */}
-        <p className="text-primary text-xs text-center mb-16">
+        <p className="text-primary text-xs text-center mb-12">
           Pick a role according to how you use the app
         </p>
         
@@ -50,28 +54,7 @@ const RoleSelection: React.FC = () => {
           </Button>
         </div>
       </div>
-      
-      {/* Footer */}
-      <div className="pb-8 pt-12">
-        <p className="text-muted-foreground text-xs text-center">
-          By using this application, you agree to our{' '}
-          <button 
-            onClick={() => navigate('/terms')}
-            className="text-primary"
-          >
-            Terms
-          </button>{' '}
-          and
-          <br />
-          <button 
-            onClick={() => navigate('/privacy-policy')}
-            className="text-primary"
-          >
-            Privacy policy
-          </button>.
-        </p>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 

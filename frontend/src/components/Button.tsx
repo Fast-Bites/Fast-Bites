@@ -23,7 +23,7 @@ const Button: React.FC<ButtonProps> = ({
   iconSize = 'w-6 h-6',
   size = 'lg',
 }) => {
-  const baseStyles = 'w-full py-3 rounded-full font-medium transition-opacity';
+  const baseStyles = 'w-full max-w-md mx-auto py-3 rounded-full font-medium transition-opacity';
   
   const variantStyles = {
     primary: 'bg-primary text-primary-foreground hover:opacity-90 active:opacity-80',

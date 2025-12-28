@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import Button from '../components/Button';
+import BackButton from '../components/BackButton';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import api from '../lib/api';
 
@@ -221,14 +222,9 @@ const Location: React.FC = () => {
         {/* Header with back button and heading */}
         <div className="relative w-full pointer-events-auto">
           {/* Black background section */}
-          <div className="w-full bg-black px-6 pt-12">
+          <div className="w-full bg-black px-4 pt-8">
             {/* Back Button */}
-            <button 
-              onClick={() => navigate(-1)}
-              className="text-foreground text-4xl"
-            >
-              &#x3c;
-            </button>
+            <BackButton />
             
             {/* Heading */}
             <h1 className="text-[1.75rem] font-light text-foreground leading-tight text-center">
@@ -262,7 +258,7 @@ const Location: React.FC = () => {
           <div className="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
           
           {/* Black background section */}
-          <div className="w-full bg-black px-6 pb-30">
+          <div className="w-full bg-black px-4 pb-30">
             {/* Error Message */}
             {error && (
               <p className="text-red-500 text-sm text-center mb-4">{error}</p>

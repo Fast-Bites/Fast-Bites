@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../lib/api';
+
+interface UserProfile {
+  first_name?: string;
+  last_name?: string;
+  address?: string;
+}
 
 const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data } = await api.getProfile();
+      if (data) {
+        setUser(data as UserProfile);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const categories = [
     { name: 'Shops', image: '/assets/shops.png' },
@@ -56,7 +74,7 @@ const Home: React.FC = () => {
       {/* 1st section - Header (Fixed) */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-background flex items-center justify-between px-4 pt-6 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full border-2 border-primary flex items-center justify-center overflow-hidden">
+          <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center overflow-hidden">
             <img 
               src="/assets/user 1 1-home.png" 
               alt="User" 
@@ -64,14 +82,18 @@ const Home: React.FC = () => {
             />
           </div>
           <div>
-            <h2 className="text-foreground text-lg">John Doe</h2>
-            <p className="text-muted-foreground text-xs">123 Nigeria road</p>
+            <h2 className="text-foreground text-lg">
+              {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Guest' : 'Loading...'}
+            </h2>
+            <p className="text-muted-foreground text-xs truncate max-w-[200px]">
+              {user?.address || 'No address set'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <button className="w-10 h-10 flex items-center justify-center">
             <img 
-              src="/assets/history-home.png" 
+              src="/assets/notification.png" 
               alt="History" 
               className="w-7 h-7"
             />

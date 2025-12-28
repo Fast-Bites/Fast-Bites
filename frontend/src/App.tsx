@@ -36,10 +36,6 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signup-form" element={<SignUpForm />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/signup-form-2" element={<SignUpForm2 />} />
-          <Route path="/location" element={<Location />} />
-          <Route path="/map" element={<Map />} />
-          <Route path="/complete" element={<Complete />} />
           <Route path="/signin-form" element={<SignInForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
@@ -47,6 +43,10 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           
           {/* Protected Routes - require authentication */}
+          <Route path="/signup-form-2" element={<ProtectedRoute><SignUpForm2 /></ProtectedRoute>} />
+          <Route path="/location" element={<ProtectedRoute><Location /></ProtectedRoute>} />
+          <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
+          <Route path="/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         </Routes>
       </MobileOnly>

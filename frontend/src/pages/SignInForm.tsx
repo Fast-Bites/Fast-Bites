@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import PageLayout from '../components/PageLayout';
+import LogoHeader from '../components/LogoHeader';
 import { auth, api } from '../lib/api';
 
 const SignInForm: React.FC = () => {
@@ -80,35 +82,8 @@ const SignInForm: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] px-4">
-      {/* Back Button */}
-      <div className="pt-12">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-foreground text-4xl"
-        >
-          &#x3c;
-        </button>
-      </div>
-
-      {/* Logo */}
-      <div className="mt-6 mb-2">
-        <img 
-          src="/logo/Fast bite transparent I.png" 
-          alt="Fast Bites" 
-          className="h-[5rem] object-contain"
-        />
-      </div>
-
-      {/* Heading */}
-      <h1 className="text-3xl font-bold text-foreground mb-1">
-        Sign in
-      </h1>
-      
-      {/* Subtext */}
-      <p className="text-muted-foreground text-sm mb-6">
-        Welcome back
-      </p>
+    <PageLayout showHeader={true} showFooter={true}>
+      <LogoHeader title="Sign in" subtitle="Welcome back" />
 
       {/* Error Message */}
       {error && (
@@ -222,31 +197,7 @@ const SignInForm: React.FC = () => {
           Sign in with Google
         </Button>
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1"></div>
-      
-      {/* Footer */}
-      <div className="pb-8 pt-12">
-        <p className="text-muted-foreground text-xs text-center">
-          By using this application, you agree to our{' '}
-          <button 
-            onClick={() => navigate('/terms')}
-            className="text-primary"
-          >
-            Terms
-          </button>{' '}
-          and
-          <br />
-          <button 
-            onClick={() => navigate('/privacy-policy')}
-            className="text-primary"
-          >
-            Privacy policy
-          </button>.
-        </p>
-      </div>
-    </div>
+    </PageLayout>
   );
 };
 
