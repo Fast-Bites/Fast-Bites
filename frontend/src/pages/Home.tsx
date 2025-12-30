@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../lib/api';
+import api, { MenuItemWithRestaurant } from '../lib/api';
 
 interface UserProfile {
   first_name?: string;
@@ -7,59 +7,71 @@ interface UserProfile {
   address?: string;
 }
 
+interface MealDisplay {
+  id: string;
+  name: string;
+  restaurant: string;
+  time: string;
+  price: string;
+  image: string;
+}
+
+// Placeholder images for meals without images - randomly assigned
+const PLACEHOLDER_IMAGES = [
+  'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop', // Pizza
+  'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop', // Pancakes
+  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Salad
+  'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop', // BBQ
+];
+
+// Helper to format delivery time
+const formatDeliveryTime = (minutes?: number): string => {
+  if (!minutes) return '30 mins';
+  if (minutes >= 60) {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hrs} hr ${mins} mins` : `${hrs} hr`;
+  }
+  return `${minutes} mins`;
+};
+
 const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [meals, setMeals] = useState<MealDisplay[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data } = await api.getProfile();
-      if (data) {
-        setUser(data as UserProfile);
+    const fetchData = async () => {
+      // Fetch user profile
+      const { data: profileData } = await api.getProfile();
+      if (profileData) {
+        setUser(profileData as UserProfile);
       }
+
+      // Fetch ALL menu items (default limit is 100)
+      const { data: menuData } = await api.getMenuItems();
+      if (menuData && menuData.length > 0) {
+        const formattedMeals: MealDisplay[] = menuData.map((item: MenuItemWithRestaurant) => ({
+          id: item.id,
+          name: item.name,
+          restaurant: item.restaurant_name ? `From ${item.restaurant_name}` : 'From Restaurant',
+          time: formatDeliveryTime(item.delivery_time),
+          price: `₦${item.price.toLocaleString()}`,
+          // Use image_url from DB or random placeholder
+          image: item.image_url || PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)],
+        }));
+        setMeals(formattedMeals);
+      }
+      setLoading(false);
     };
-    fetchProfile();
+    fetchData();
   }, []);
 
   const categories = [
     { name: 'Shops', image: '/assets/shops.png' },
     { name: 'Pharmacy', image: '/assets/phamarcy.png' },
     { name: 'Local Market', image: '/assets/local market.png' },
-  ];
-
-  const meals = [
-    {
-      name: 'Pizza',
-      restaurant: 'From Domino\'s pizza',
-      time: '1 hr 40 mins',
-      calories: '266Kal',
-      price: '₦6,500',
-      image: '/assets/meal-home.png',
-    },
-    {
-      name: 'Pancakes',
-      restaurant: 'From Pancake Heaven',
-      time: '20 mins',
-      calories: '175Kal',
-      price: '₦3,200',
-      image: '/assets/pancakes-home.png',
-    },
-    {
-      name: 'Featured 1',
-      restaurant: 'From Local Kitchen',
-      time: '30 mins',
-      calories: '200Kal',
-      price: '₦4,500',
-      image: '/assets/below 1-home.png',
-    },
-    {
-      name: 'Featured 2',
-      restaurant: 'From Chef\'s Table',
-      time: '45 mins',
-      calories: '320Kal',
-      price: '₦5,800',
-      image: '/assets/below 2-home.png',
-    },
   ];
 
   const navItems = [
@@ -193,97 +205,54 @@ const Home: React.FC = () => {
       <div className="px-4 mt-10 pb-24">
         <h2 className="text-foreground text-3xl mb-4">Meals</h2>
         
-        {/* First row - 2 cards */}
-        <div className="flex gap-2 mb-3">
-          {meals.slice(0, 2).map((meal) => (
-            <div 
-              key={meal.name} 
-              className="flex-1 backdrop-blur-lg rounded-xl overflow-hidden"
-              style={{ 
-                backgroundColor: 'hsla(0, 0%, 10%, 0.8)', 
-                border: '1px solid hsl(0, 0%, 20%)' 
-              }}
-            >
-              <div className="h-32 overflow-hidden">
-                <img 
-                  src={meal.image} 
-                  alt={meal.name} 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <h3 className="text-foreground font-semibold text-base">{meal.name}</h3>
-                <p className="text-muted-foreground text-xs">{meal.restaurant}</p>
-                <div className="flex items-center gap-[2px] mt-1 text-xs text-muted-foreground">
+        {loading ? (
+          <div className="text-center text-muted-foreground py-8">Loading meals...</div>
+        ) : meals.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">No meals available</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {meals.map((meal) => (
+              <div 
+                key={meal.id} 
+                className="backdrop-blur-lg rounded-xl overflow-hidden"
+                style={{ 
+                  backgroundColor: 'hsla(0, 0%, 10%, 0.8)', 
+                  border: '1px solid hsl(0, 0%, 20%)' 
+                }}
+              >
+                <div className="h-32 overflow-hidden">
                   <img 
-                    src="/assets/stopwatch 1-home.png" 
-                    alt="Time" 
-                    className="w-4 h-4"
+                    src={meal.image} 
+                    alt={meal.name} 
+                    className="w-full h-full object-cover"
                   />
-                  <span>{meal.time}</span>
-                  <span className="text-muted-foreground mx-[1px] text-base">|</span>
-                  <span className="text-muted-foreground">{meal.calories}</span>
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-foreground font-bold text-base">{meal.price}</span>
-                  <button className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
+                <div className="p-3">
+                  <h3 className="text-foreground font-semibold text-base truncate">{meal.name}</h3>
+                  <p className="text-muted-foreground text-xs truncate">{meal.restaurant}</p>
+                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                     <img 
-                      src="/assets/plus 1-home.png" 
-                      alt="Add" 
-                      className="w-3 h-3"
+                      src="/assets/stopwatch 1-home.png" 
+                      alt="Time" 
+                      className="w-4 h-4"
                     />
-                  </button>
+                    <span>{meal.time}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-foreground font-bold text-base">{meal.price}</span>
+                    <button className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
+                      <img 
+                        src="/assets/plus 1-home.png" 
+                        alt="Add" 
+                        className="w-3 h-3"
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Second row - 2 cards */}
-        <div className="flex gap-2 mb-3">
-          {meals.slice(2, 4).map((meal) => (
-            <div 
-              key={meal.name} 
-              className="flex-1 backdrop-blur-lg rounded-xl overflow-hidden"
-              style={{ 
-                backgroundColor: 'hsla(0, 0%, 10%, 0.8)', 
-                border: '1px solid hsl(0, 0%, 20%)' 
-              }}
-            >
-              <div className="h-32 overflow-hidden">
-                <img 
-                  src={meal.image} 
-                  alt={meal.name} 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <h3 className="text-foreground font-semibold text-base">{meal.name}</h3>
-                <p className="text-muted-foreground text-xs">{meal.restaurant}</p>
-                <div className="flex items-center gap-[2px] mt-1 text-xs text-muted-foreground">
-                  <img 
-                    src="/assets/stopwatch 1-home.png" 
-                    alt="Time" 
-                    className="w-4 h-4"
-                  />
-                  <span>{meal.time}</span>
-                  <span className="text-muted-foreground mx-[1px] text-base">|</span>
-                  <span className="text-muted-foreground">{meal.calories}</span>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-foreground font-bold text-base">{meal.price}</span>
-                  <button className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
-                    <img 
-                      src="/assets/plus 1-home.png" 
-                      alt="Add" 
-                      className="w-3 h-3"
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 5th section - Bottom Navigation (Fixed) */}

@@ -133,10 +133,10 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
               <div
                 key={prediction.place_id}
                 onClick={() => handleSelectPrediction(prediction)}
-                className="flex items-start gap-3 px-2 py-4 text-foreground hover:bg-white/5 cursor-pointer border-b border-white/10 last:border-0 transition-colors"
+                 className="flex items-start gap-3 px-2 py-4 text-foreground hover:bg-white/5 cursor-pointer border-b border-white last:border-0 transition-colors"
               >
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-                  <img src="/assets/maps-and-flags 2 1.png" alt="" className="w-5 h-5" />
+                  <img src="/assets/maps-and-flags 2 1.png" alt="" className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground truncate">

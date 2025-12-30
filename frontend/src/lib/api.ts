@@ -154,7 +154,38 @@ export const api = {
 
   deleteProfile: () =>
     request("/users/profile", { method: "DELETE" }, true),
+
+  // Menu items - public endpoints (no auth required)
+  getMenuItems: (limit = 100, offset = 0) =>
+    request<MenuItemWithRestaurant[]>(`/menu/items?limit=${limit}&offset=${offset}`),
+
+  getRestaurants: (limit = 10, offset = 0) =>
+    request<Restaurant[]>(`/menu/restaurants?limit=${limit}&offset=${offset}`),
 };
+
+// Types for menu
+export interface MenuItemWithRestaurant {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  is_available?: boolean;
+  restaurant_name?: string;
+  restaurant_id?: string;
+  delivery_time?: number;  // in minutes
+}
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  image_url?: string;
+  rating?: number;
+  is_open?: boolean;
+}
 
 export default api;
 
