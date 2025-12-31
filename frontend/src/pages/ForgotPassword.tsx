@@ -205,15 +205,16 @@ const ForgotPassword: React.FC = () => {
           {error && <p className="text-red-500 text-xs mb-4">{error}</p>}
           {!error && <div className="mb-6"></div>}
 
-          {/* Verify Button */}
+          {/* Continue Button */}
           <Button 
             type="button"
             onClick={handleVerifyOtp}
             disabled={loading || otp.some(d => !d)}
+            disabledStyle={false}
             variant="primary"
             className="mb-4"
           >
-            {loading ? 'Continue' : 'Continue'}
+            Continue
           </Button>
         </div>
       )}

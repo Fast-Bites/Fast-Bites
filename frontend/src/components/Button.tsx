@@ -6,6 +6,7 @@ interface ButtonProps {
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  disabledStyle?: boolean; // If false, disabled button keeps normal appearance
   className?: string;
   icon?: string;
   iconSize?: string;
@@ -18,6 +19,7 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   type = 'button',
   disabled = false,
+  disabledStyle = true, // Default: show disabled styling
   className = '',
   icon,
   iconSize = 'w-6 h-6',
@@ -36,7 +38,8 @@ const Button: React.FC<ButtonProps> = ({
     lg: 'text-lg',
   };
   
-  const disabledStyles = disabled 
+  // If disabledStyle is false, keep normal appearance even when disabled
+  const disabledStyles = (disabled && disabledStyle)
     ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50' 
     : variantStyles[variant];
 
