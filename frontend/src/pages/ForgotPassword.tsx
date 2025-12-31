@@ -116,11 +116,8 @@ const ForgotPassword: React.FC = () => {
         } 
       />
 
-      {/* Error Message */}
-      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
       {/* Progress Bar */}
-      <div className="flex mb-10">
+      <div className="flex mb-6">
         <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
       </div>
 
@@ -135,8 +132,12 @@ const ForgotPassword: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="E.g johndoe@gmail.com"
-            className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
+            className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-2"
           />
+
+          {/* Error Message */}
+          {error && <p className="text-red-500 text-xs mb-4">{error}</p>}
+          {!error && <div className="mb-4"></div>}
 
           <Button 
             type="submit"
@@ -184,7 +185,7 @@ const ForgotPassword: React.FC = () => {
       {emailSent && showOtpInput && (
         <div className="flex flex-col">
           {/* OTP Input Boxes */}
-          <div className="flex mb-8 justify-between">
+          <div className="flex mb-2 justify-between">
             {otp.map((digit, index) => (
               <input
                 key={index}
@@ -200,6 +201,10 @@ const ForgotPassword: React.FC = () => {
             ))}
           </div>
 
+          {/* Error Message */}
+          {error && <p className="text-red-500 text-xs mb-4">{error}</p>}
+          {!error && <div className="mb-6"></div>}
+
           {/* Verify Button */}
           <Button 
             type="button"
@@ -208,25 +213,8 @@ const ForgotPassword: React.FC = () => {
             variant="primary"
             className="mb-4"
           >
-            {loading ? 'Verifying...' : 'Verify'}
+            {loading ? 'Continue' : 'Continue'}
           </Button>
-
-          <button
-            type="button"
-            onClick={() => setShowOtpInput(false)}
-            className="text-muted-foreground text-sm mb-4"
-          >
-            ← Back to options
-          </button>
-
-          {/* Resend Code */}
-          <button
-            onClick={handleResend}
-            disabled={loading}
-            className="text-primary text-sm underline"
-          >
-            Didn't receive code? Resend
-          </button>
         </div>
       )}
 

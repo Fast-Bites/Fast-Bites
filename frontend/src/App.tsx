@@ -11,6 +11,7 @@ import SignUp from './pages/SignUp';
 import SignUpForm from './pages/SignUpForm';
 import SignUpForm2 from './pages/SignUpForm2';
 import VerifyEmail from './pages/VerifyEmail';
+import EmailSent from './pages/EmailSent';
 import Location from './pages/Location';
 import Map from './pages/Map';
 import Complete from './pages/Complete';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/role-selection" element={<RoleSelection />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signup-form" element={<SignUpForm />} />
+          <Route path="/email-sent" element={<EmailSent />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/signin-form" element={<SignInForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

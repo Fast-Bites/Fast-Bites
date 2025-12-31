@@ -9,6 +9,7 @@ const SignInForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,21 +86,6 @@ const SignInForm: React.FC = () => {
     <PageLayout showHeader={true} showFooter={true}>
       <LogoHeader title="Sign in" subtitle="Welcome back" />
 
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4">
-          <p className="text-red-500 text-sm">{error}</p>
-          {showRegisterLink && (
-            <button
-              onClick={() => navigate('/signup')}
-              className="text-primary text-sm underline mt-2"
-            >
-              Don't have an account? Sign up →
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Progress Bar */}
       <div className="flex mb-10">
         <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
@@ -123,14 +109,42 @@ const SignInForm: React.FC = () => {
         <label className="text-foreground text-sm mb-2">
           Password
         </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="E.g joHnoE123@"
-          minLength={6}
-          className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
-        />
+        <div className="relative mb-2">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="E.g joHnoE123@"
+            minLength={6}
+            className="w-full p-3 pr-12 bg-foreground rounded-xl text-background placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+          >
+            <img 
+              src={showPassword ? '/assets/opened_eyes.png' : '/assets/closed_eye.png'} 
+              alt={showPassword ? 'Hide password' : 'Show password'}
+              className="w-5 h-5"
+            />
+          </button>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-2">
+            <p className="text-red-500 text-xs">{error}</p>
+            {showRegisterLink && (
+              <button
+                onClick={() => navigate('/signup')}
+                className="text-primary text-xs underline mt-1"
+              >
+                Don't have an account? Sign up →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Remember Me Checkbox */}
         <div className="flex items-center mb-6">

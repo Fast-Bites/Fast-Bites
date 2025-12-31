@@ -31,6 +31,16 @@
     display: none;
   }
 
+  /* Hide browser's default password reveal button */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+  input[type="password"]::-webkit-credentials-auto-fill-button,
+  input[type="password"]::-webkit-textfield-decoration-container {
+    visibility: hidden;
+  }
+
   /* Slow spin animation for loading logo */
   .animate-spin-slow {
     animation: spin-slow 2s linear infinite;

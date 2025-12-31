@@ -56,3 +56,7 @@ venv/
 
 # ignore all files with .pyi extension
 *.pyi
+
+# other utility scripts
+**/scripts/*
+**/scripts/**

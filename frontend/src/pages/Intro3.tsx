@@ -22,10 +22,10 @@ const Intro3: React.FC = () => {
               {steps.map((step) => (
                 <div
                   key={step}
-                  className={`h-1 rounded-full transition-all duration-300 ${
+                  className={`flex-1 h-1 rounded-full transition-all duration-300 ${
                     step === currentStep 
-                      ? 'w-17 bg-foreground' 
-                      : 'w-17 bg-muted'
+                      ? 'bg-foreground' 
+                      : 'bg-muted'
                   }`}
                 />
               ))}
@@ -34,7 +34,7 @@ const Intro3: React.FC = () => {
             {/* Skip Button */}
             <button 
               onClick={() => navigate('/role-selection')}
-              className="text-foreground text-xs font-normal hover:opacity-80 transition-opacity">
+              className="text-foreground text-sm font-normal hover:opacity-80 transition-opacity">
               Skip
             </button>
           </div>

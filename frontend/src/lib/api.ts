@@ -45,6 +45,14 @@ async function request<T>(
   }
 }
 
+// Helper to simplify password error messages
+const simplifyPasswordError = (errorMessage: string): string => {
+  if (errorMessage.includes('Password should contain at least one character')) {
+    return 'Please include at least a capital letter and a special character (!, @, #, etc.)';
+  }
+  return errorMessage;
+};
+
 // Auth - using Supabase
 export const auth = {
   signup: async (email: string, password: string) => {
@@ -55,7 +63,7 @@ export const auth = {
         emailRedirectTo: `${window.location.origin}/signup-form-2`,
       }
     });
-    if (error) return { error: error.message };
+    if (error) return { error: simplifyPasswordError(error.message) };
     return { data };
   },
 
@@ -110,7 +118,7 @@ export const auth = {
 
   updatePassword: async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) return { error: error.message };
+    if (error) return { error: simplifyPasswordError(error.message) };
     return { data: { message: 'Password updated' } };
   },
 

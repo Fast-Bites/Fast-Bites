@@ -18,16 +18,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Fast Bites API", lifespan=lifespan)
 
-# CORS - allow frontend
-origins = [
-    settings.FRONTEND_URL,
-    "http://localhost:8080",
-    "http://localhost:5173",
-]
-
+# CORS - allow configured origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -86,22 +86,22 @@ const VerifyEmail: React.FC = () => {
   return (
     <PageLayout showHeader={true} showFooter={false}>
       <LogoHeader 
-        title="Verify Email" 
-        subtitle={<>Enter the 6-digit code sent to <span className="text-primary">{email}</span></>} 
+        title="Email Verification" 
+        subtitle="" 
       />
 
-      {/* Error Message */}
-      {error && (
-        <p className="text-red-500 text-sm mb-4">{error}</p>
-      )}
-
       {/* Progress Bar */}
-      <div className="flex mb-10">
+      <div className="flex mb-6">
         <div className="flex-1 h-[1px] bg-foreground rounded-full"></div>
       </div>
 
+      {/* Choose how to verify */}
+      <p className="text-muted-foreground text-lg mb-4 text-left">
+      Enter 6-digit code
+      </p>
+
       {/* OTP Input Boxes */}
-      <div className="flex mb-8 justify-between">
+      <div className="flex mb-2 justify-between">
         {otp.map((digit, index) => (
           <input
             key={index}
@@ -117,6 +117,10 @@ const VerifyEmail: React.FC = () => {
         ))}
       </div>
 
+      {/* Error Message */}
+      {error && <p className="text-red-500 text-xs mb-4">{error}</p>}
+      {!error && <div className="mb-6"></div>}
+
       {/* Verify Button */}
       <Button 
         type="button"
@@ -125,17 +129,8 @@ const VerifyEmail: React.FC = () => {
         variant="primary"
         className="mb-4"
       >
-        {loading ? 'Verifying...' : 'Verify'}
+        {loading ? 'Verifying...' : 'Continue'}
       </Button>
-
-      {/* Resend Code */}
-      <button
-        onClick={handleResend}
-        disabled={loading}
-        className="text-primary text-sm underline mb-6"
-      >
-        Didn't receive code? Resend
-      </button>
 
       {/* Spacer */}
       <div className="flex-1"></div>

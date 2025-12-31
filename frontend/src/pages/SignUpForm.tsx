@@ -9,10 +9,10 @@ const SignUpForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const isPasswordValid = password.length >= 6;
 
@@ -52,7 +52,8 @@ const SignUpForm: React.FC = () => {
       
       // Check if email confirmation is required
       if (data.user && !data.session) {
-        setConfirmationSent(true);
+        // Navigate to email sent page
+        navigate('/email-sent');
         return;
       }
       
@@ -65,36 +66,6 @@ const SignUpForm: React.FC = () => {
   return (
     <PageLayout showHeader={true} showFooter={true}>
       <LogoHeader title="Sign Up" subtitle="Create an account" />
-
-      {/* Error Message */}
-      {error && (
-        <p className="text-red-500 text-sm mb-4">{error}</p>
-      )}
-
-      {/* Confirmation Sent Message */}
-      {confirmationSent && (
-        <div className="bg-green-900/30 border border-green-500 rounded-xl p-4 mb-6">
-          <p className="text-green-400 text-sm mb-3">
-            ✓ Verification email sent to <strong>{email}</strong>
-          </p>
-          <p className="text-muted-foreground text-xs mb-4">
-            Choose how to verify:
-          </p>
-          <div className="flex flex-col gap-3">
-            <Button 
-              type="button"
-              onClick={() => navigate('/verify-email')}
-              variant="primary"
-              className="w-full"
-            >
-              Enter 6-digit Code
-            </Button>
-            <p className="text-muted-foreground text-xs text-center">
-              — or click the link in your email —
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Progress Bar */}
       <div className="flex mb-10">
@@ -120,14 +91,32 @@ const SignUpForm: React.FC = () => {
         <label className="text-foreground text-sm mb-2">
           Password
         </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Minimum of 6 characters"
-          minLength={6}
-          className="w-full p-3 bg-foreground rounded-xl text-background placeholder:text-muted-foreground mb-6"
-        />
+        <div className="relative mb-2">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Minimum of 6 characters"
+            minLength={6}
+            className="w-full p-3 pr-12 bg-foreground rounded-xl text-background placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+          >
+            <img 
+              src={showPassword ? '/assets/opened_eyes.png' : '/assets/closed_eye.png'} 
+              alt={showPassword ? 'Hide password' : 'Show password'}
+              className="w-5 h-5"
+            />
+          </button>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <p className="text-red-500 text-xs mb-4">{error}</p>
+        )}
 
         {/* Remember Me Checkbox */}
         <div className="flex items-center mb-6">
