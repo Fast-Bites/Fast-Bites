@@ -36,6 +36,22 @@ const extractLocationDetails = (results: google.maps.GeocoderResult[]) => {
   return { city, state };
 };
 
+// Get initial location from session storage (from device location feature)
+const getInitialLocation = () => {
+  const detectedLocation = sessionStorage.getItem('detected_location');
+  if (detectedLocation) {
+    try {
+      const location = JSON.parse(detectedLocation);
+      // Clear it so it doesn't persist on subsequent visits
+      sessionStorage.removeItem('detected_location');
+      return location;
+    } catch (e) {
+      console.error('Failed to parse detected location:', e);
+    }
+  }
+  return null;
+};
+
 const Map: React.FC = () => {
   const navigate = useNavigate();
   const { isLoaded, loadError } = useGoogleMaps();
@@ -45,7 +61,7 @@ const Map: React.FC = () => {
     lng: number;
     city: string;
     state: string;
-  } | null>(null);
+  } | null>(getInitialLocation);
   const [mapRef, setMapRef] = useState<google.maps.Map | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -230,9 +246,6 @@ const Map: React.FC = () => {
               <span className="flex-1 min-w-0 text-base font-sm truncate">
                 {selectedLocation ? selectedLocation.address : 'Input your location'}
               </span>
-              <svg className="w-[18px] h-[18px] text-black flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             </button>
           </div>
         </div>
@@ -288,6 +301,7 @@ const Map: React.FC = () => {
               fullscreenMode={true}
               autoFocus={true}
               className="flex-1"
+              onBackClick={() => setSearchOverlayOpen(false)}
             />
           </div>
           

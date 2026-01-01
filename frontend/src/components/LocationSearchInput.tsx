@@ -14,6 +14,8 @@ interface LocationSearchInputProps {
   fullscreenMode?: boolean;
   /** Auto-focus the input */
   autoFocus?: boolean;
+  /** Callback when back button is clicked (fullscreen mode) */
+  onBackClick?: () => void;
 }
 
 const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ 
@@ -22,6 +24,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   className = '',
   fullscreenMode = false,
   autoFocus = false,
+  onBackClick,
 }) => {
   const [query, setQuery] = useState(initialValue);
   const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
@@ -111,8 +114,14 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
       <div className={`flex flex-col ${className}`}>
         {/* Input Container */}
         <div className="flex items-center gap-5 bg-white rounded-full px-3 py-3 shadow-lg">
-          {/* Left Icon */}
-          <FiChevronLeft size={18} className="text-black flex-shrink-0" />
+          {/* Left Icon - Back Button */}
+          <button 
+            type="button"
+            onClick={onBackClick}
+            className="text-black flex-shrink-0"
+          >
+            <FiChevronLeft size={18} />
+          </button>
 
           {/* Input */}
           <input

@@ -48,7 +48,7 @@ async function request<T>(
 // Helper to simplify password error messages
 const simplifyPasswordError = (errorMessage: string): string => {
   if (errorMessage.includes('Password should contain at least one character')) {
-    return 'Please include at least a capital letter and a special character (!, @, #, etc.)';
+    return 'Use uppercase and lowercase letters, numbers, and at least one special character (e.g., !, @, #).';
   }
   return errorMessage;
 };

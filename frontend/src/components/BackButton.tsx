@@ -17,9 +17,9 @@ const BackButton: React.FC<BackButtonProps> = ({
     return (
       <button 
         onClick={() => navigate(-1)}
-        className={`text-foreground text-4xl bg-primary rounded-full w-10 h-10 flex items-center justify-center ${className}`}
+        className={`bg-primary rounded-full w-10 h-10 flex items-center justify-center ${className}`}
       >
-        &#x3c;
+        <img src="/assets/Back.svg" alt="Back" className="w-5 h-5" />
       </button>
     );
   }
@@ -27,9 +27,9 @@ const BackButton: React.FC<BackButtonProps> = ({
   return (
     <button 
       onClick={() => navigate(-1)}
-      className={`text-foreground text-4xl ${className}`}
+      className={`${className}`}
     >
-      &#x3c;
+      <img src="/assets/Back.svg" alt="Back" className="w-5 h-5" />
     </button>
   );
 };

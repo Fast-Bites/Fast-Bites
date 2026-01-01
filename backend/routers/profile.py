@@ -1,4 +1,5 @@
 import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,6 +10,24 @@ from services.jwt_auth import get_current_user
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["profile"])
+
+
+def normalize_phone_number(phone: str | None) -> str | None:
+    """Normalize phone number to international format (+234...)"""
+    if not phone:
+        return phone
+    
+    # Remove all non-digit characters except +
+    cleaned = re.sub(r'[^\d+]', '', phone)
+    
+    # If starts with 0, replace with +234 (Nigerian format)
+    if cleaned.startswith('0'):
+        cleaned = '+234' + cleaned[1:]
+    # If starts with 234 without +, add +
+    elif cleaned.startswith('234') and not cleaned.startswith('+'):
+        cleaned = '+' + cleaned
+    
+    return cleaned
 
 @router.post("/profile", response_model=UserResponse)
 async def create_profile(
@@ -31,13 +50,22 @@ async def create_profile(
         if existing:
             raise HTTPException(status_code=400, detail="Profile already exists")
         
+        # Normalize phone number
+        normalized_phone = normalize_phone_number(profile_data.phone)
+        
+        # Check if phone number is already in use
+        if normalized_phone:
+            phone_check = await db.execute(select(User).where(User.phone == normalized_phone))
+            if phone_check.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Phone number already in use")
+        
         # Create profile with Supabase user ID
         user = User(
             id=user_id,
             email=email,
             first_name=profile_data.first_name,
             last_name=profile_data.last_name,
-            phone=profile_data.phone,
+            phone=normalized_phone,
             dob=profile_data.dob,
             role=profile_data.role if hasattr(profile_data, 'role') else "customer",
         )
@@ -92,8 +120,23 @@ async def update_profile(
         if not user:
             raise HTTPException(status_code=404, detail="Profile not found")
         
-        # Update fields
-        for key, value in profile_data.model_dump(exclude_unset=True).items():
+        # Normalize phone number if provided
+        normalized_phone = normalize_phone_number(profile_data.phone) if profile_data.phone else None
+        
+        # Check if phone number is already in use by another user
+        if normalized_phone and normalized_phone != user.phone:
+            phone_check = await db.execute(
+                select(User).where(User.phone == normalized_phone, User.id != user_id)
+            )
+            if phone_check.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Phone number already in use")
+        
+        # Update fields (use normalized phone)
+        update_data = profile_data.model_dump(exclude_unset=True)
+        if 'phone' in update_data and normalized_phone:
+            update_data['phone'] = normalized_phone
+        
+        for key, value in update_data.items():
             setattr(user, key, value)
         
         await db.commit()

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/Button';
 
 const Intro2: React.FC = () => {
   const navigate = useNavigate();
@@ -61,12 +62,12 @@ const Intro2: React.FC = () => {
             </p>
             
             {/* Next Button */}
-            <button 
+            <Button 
+              variant="primary"
               onClick={() => navigate('/intro3')}
-              className="w-full py-3 bg-primary text-primary-foreground rounded-full text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       </div>

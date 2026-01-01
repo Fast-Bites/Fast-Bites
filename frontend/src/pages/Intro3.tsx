@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/Button';
 
 const Intro3: React.FC = () => {
     const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Intro3: React.FC = () => {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url('/assets/ambitious-studio-rick-barrett-dN0yJejNxHg-unsplash 1.png')` }}
         />
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/60" />
         
         {/* Content */}
         <div className="relative z-10 flex flex-col min-h-screen">
@@ -63,12 +66,12 @@ const Intro3: React.FC = () => {
               </p>
               
               {/* Next Button */}
-              <button
-                onClick={() => navigate('/Intro4')} 
-                className="w-full py-2 bg-primary text-primary-foreground rounded-full text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity"
+              <Button 
+                variant="primary"
+                onClick={() => navigate('/Intro4')}
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         </div>

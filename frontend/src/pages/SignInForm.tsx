@@ -124,7 +124,7 @@ const SignInForm: React.FC = () => {
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
           >
             <img 
-              src={showPassword ? '/assets/opened_eyes.png' : '/assets/closed_eye.png'} 
+              src={showPassword ? '/assets/closed_eye.png' : '/assets/opened_eyes.png'} 
               alt={showPassword ? 'Hide password' : 'Show password'}
               className="w-5 h-5"
             />

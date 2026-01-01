@@ -86,7 +86,7 @@ const ChangePassword: React.FC = () => {
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
           >
             <img 
-              src={showNewPassword ? '/assets/opened_eyes.png' : '/assets/closed_eye.png'} 
+              src={showNewPassword ? '/assets/closed_eye.png' : '/assets/opened_eyes.png'} 
               alt={showNewPassword ? 'Hide password' : 'Show password'}
               className="w-5 h-5"
             />
@@ -116,7 +116,7 @@ const ChangePassword: React.FC = () => {
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
           >
             <img 
-              src={showRepeatPassword ? '/assets/opened_eyes.png' : '/assets/closed_eye.png'} 
+              src={showRepeatPassword ? '/assets/closed_eye.png' : '/assets/opened_eyes.png'} 
               alt={showRepeatPassword ? 'Hide password' : 'Show password'}
               className="w-5 h-5"
             />
