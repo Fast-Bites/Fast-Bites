@@ -1,19 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleMap } from '@react-google-maps/api';
 import Button from '../components/Button';
 import BackButton from '../components/BackButton';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
-
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%',
-};
-
-const defaultCenter = {
-  lat: 6.5244, // Lagos, Nigeria
-  lng: 3.3792,
-};
 
 // Helper to extract city and state from geocoding results
 const extractLocationDetails = (results: google.maps.GeocoderResult[]) => {
@@ -36,11 +25,26 @@ const extractLocationDetails = (results: google.maps.GeocoderResult[]) => {
 
 const Location: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoaded, loadError } = useGoogleMaps();
+  const { isLoaded } = useGoogleMaps(); // Still needed for reverse geocoding
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const reverseGeocode = useCallback((lat: number, lng: number) => {
+    // Wait for Google Maps API to be loaded
+    if (!isLoaded) {
+      // If not loaded yet, store coordinates and navigate to map page
+      const location = {
+        lat,
+        lng,
+        address: '',
+        city: '',
+        state: '',
+      };
+      sessionStorage.setItem('detected_location', JSON.stringify(location));
+      navigate('/map');
+      return;
+    }
+
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode(
       { location: { lat, lng } },
@@ -64,7 +68,7 @@ const Location: React.FC = () => {
         }
       }
     );
-  }, [navigate]);
+  }, [navigate, isLoaded]);
 
   const handleEnableLocation = () => {
     if (!navigator.geolocation) {
@@ -104,52 +108,13 @@ const Location: React.FC = () => {
     );
   };
 
-  if (loadError) {
-    return (
-      <div className="w-full min-h-screen bg-background flex items-center justify-center">
-        <p className="text-red-500">Error loading maps</p>
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="w-full min-h-screen bg-background flex items-center justify-center">
-        <p className="text-foreground">Loading maps...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full min-h-screen bg-background relative font-[var(--font-poppins)]">
-      {/* Non-interactive Google Map Background */}
-      <div className="absolute inset-0">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={defaultCenter}
-          zoom={12}
-          options={{
-            disableDefaultUI: true,
-            zoomControl: false,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            draggable: false,
-            scrollwheel: false,
-            disableDoubleClickZoom: true,
-            clickableIcons: false,
-            gestureHandling: 'none',
-            styles: [
-              { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-              { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-              { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-              { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
-              { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
-              { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
-            ],
-          }}
-        />
-      </div>
+      {/* Static Map Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('/assets/map.png')` }}
+      />
       
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen pointer-events-none">
