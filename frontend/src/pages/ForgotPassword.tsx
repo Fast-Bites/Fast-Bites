@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
+import ResendOverlay from '../components/ResendOverlay';
 import { auth } from '../lib/api';
+
+// Helper to extract seconds from error message like "...after 58 seconds"
+const extractSecondsFromError = (error: string): number | null => {
+  const match = error.match(/after\s+(\d+)\s+second/i);
+  return match ? parseInt(match[1], 10) : null;
+};
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +21,15 @@ const ForgotPassword: React.FC = () => {
   const [emailSent, setEmailSent] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const [overlaySeconds, setOverlaySeconds] = useState<number | undefined>();
+  const [overlayType, setOverlayType] = useState<'warning' | 'success'>('warning');
+
+  const closeOverlay = useCallback(() => {
+    setOverlayVisible(false);
+  }, []);
 
   const verifyOtp = useCallback(async (otpArray: string[]) => {
     const otpCode = otpArray.join('');
@@ -73,11 +89,22 @@ const ForgotPassword: React.FC = () => {
     setLoading(false);
 
     if (authError) {
-      setError(authError);
+      const seconds = extractSecondsFromError(authError);
+      if (seconds) {
+        setOverlayMessage('Try again after');
+        setOverlaySeconds(seconds);
+        setOverlayType('warning');
+        setOverlayVisible(true);
+      } else {
+        setError(authError);
+      }
       return;
     }
 
-    alert('New code sent to your email!');
+    setOverlayMessage('New code sent to your email!');
+    setOverlaySeconds(undefined);
+    setOverlayType('success');
+    setOverlayVisible(true);
   };
 
   const handleChange = (index: number, value: string) => {
@@ -216,11 +243,29 @@ const ForgotPassword: React.FC = () => {
           >
             Continue
           </Button>
+
+          {/* Resend Code */}
+          <button
+            onClick={handleResend}
+            disabled={loading}
+            className="text-primary text-xs underline mb-6 text-center"
+          >
+            Didn't receive code? Resend
+          </button>
         </div>
       )}
 
       {/* Spacer */}
       <div className="flex-1"></div>
+
+      {/* Resend Overlay */}
+      <ResendOverlay
+        visible={overlayVisible}
+        message={overlayMessage}
+        secondsLeft={overlaySeconds}
+        onClose={closeOverlay}
+        type={overlayType}
+      />
     </PageLayout>
   );
 };

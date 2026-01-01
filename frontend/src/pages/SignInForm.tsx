@@ -14,6 +14,7 @@ const SignInForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showRegisterLink, setShowRegisterLink] = useState(false);
+  const [showVerifyLink, setShowVerifyLink] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +23,7 @@ const SignInForm: React.FC = () => {
     setLoading(true);
     setError('');
     setShowRegisterLink(false);
+    setShowVerifyLink(false);
 
     const { data, error: authError } = await auth.signin(email, password);
 
@@ -34,7 +36,10 @@ const SignInForm: React.FC = () => {
         setError('Invalid email or password. Please try again.');
         setShowRegisterLink(true);
       } else if (authError.toLowerCase().includes('email not confirmed')) {
-        setError('Please confirm your email before signing in.');
+        setError('Please verify your email before signing in.');
+        setShowVerifyLink(true);
+        // Store email for verification page
+        sessionStorage.setItem('signup_email', email);
       } else {
         setError(authError);
       }
@@ -137,10 +142,20 @@ const SignInForm: React.FC = () => {
             <p className="text-red-500 text-xs">{error}</p>
             {showRegisterLink && (
               <button
+                type="button"
                 onClick={() => navigate('/signup')}
                 className="text-primary text-xs underline mt-1"
               >
                 Don't have an account? Sign up →
+              </button>
+            )}
+            {showVerifyLink && (
+              <button
+                type="button"
+                onClick={() => navigate('/email-sent')}
+                className="text-primary text-xs underline mt-1"
+              >
+                Verify your email →
               </button>
             )}
           </div>

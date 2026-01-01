@@ -1,13 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
+import ResendOverlay from '../components/ResendOverlay';
 import { auth } from '../lib/api';
+
+// Helper to extract seconds from error message like "...after 58 seconds"
+const extractSecondsFromError = (error: string): number | null => {
+  const match = error.match(/after\s+(\d+)\s+second/i);
+  return match ? parseInt(match[1], 10) : null;
+};
 
 const EmailSent: React.FC = () => {
   const navigate = useNavigate();
   const email = sessionStorage.getItem('signup_email') || '';
+  
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const [overlaySeconds, setOverlaySeconds] = useState<number | undefined>();
+  const [overlayType, setOverlayType] = useState<'warning' | 'success'>('warning');
 
   useEffect(() => {
     if (!email) {
@@ -15,15 +27,32 @@ const EmailSent: React.FC = () => {
     }
   }, [email, navigate]);
 
+  const closeOverlay = useCallback(() => {
+    setOverlayVisible(false);
+  }, []);
+
   const handleResend = async () => {
     const { error: resendError } = await auth.resendConfirmation(email);
     
     if (resendError) {
-      alert(resendError);
+      const seconds = extractSecondsFromError(resendError);
+      if (seconds) {
+        setOverlayMessage('Try again after');
+        setOverlaySeconds(seconds);
+        setOverlayType('warning');
+      } else {
+        setOverlayMessage(resendError);
+        setOverlaySeconds(undefined);
+        setOverlayType('warning');
+      }
+      setOverlayVisible(true);
       return;
     }
     
-    alert('New code sent to your email!');
+    setOverlayMessage('New code sent to your email!');
+    setOverlaySeconds(undefined);
+    setOverlayType('success');
+    setOverlayVisible(true);
   };
 
   return (
@@ -61,13 +90,22 @@ const EmailSent: React.FC = () => {
       {/* Resend Code */}
       <button
         onClick={handleResend}
-        className="text-primary text-sm underline mb-6"
+        className="text-primary text-xs underline mb-6"
       >
         Didn't receive code? Resend
       </button>
 
       {/* Spacer */}
       <div className="flex-1"></div>
+
+      {/* Resend Overlay */}
+      <ResendOverlay
+        visible={overlayVisible}
+        message={overlayMessage}
+        secondsLeft={overlaySeconds}
+        onClose={closeOverlay}
+        type={overlayType}
+      />
     </PageLayout>
   );
 };

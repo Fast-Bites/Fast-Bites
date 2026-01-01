@@ -1,9 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
+import ResendOverlay from '../components/ResendOverlay';
 import { auth } from '../lib/api';
+
+// Helper to extract seconds from error message like "...after 58 seconds"
+const extractSecondsFromError = (error: string): number | null => {
+  const match = error.match(/after\s+(\d+)\s+second/i);
+  return match ? parseInt(match[1], 10) : null;
+};
 
 const VerifyEmail: React.FC = () => {
   const navigate = useNavigate();
@@ -12,42 +19,19 @@ const VerifyEmail: React.FC = () => {
   const [error, setError] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState('');
+  const [overlaySeconds, setOverlaySeconds] = useState<number | undefined>();
+  const [overlayType, setOverlayType] = useState<'warning' | 'success'>('warning');
+  
   const email = sessionStorage.getItem('signup_email') || '';
 
-  useEffect(() => {
-    if (!email) {
-      navigate('/signup-form');
-    }
-  }, [email, navigate]);
+  const closeOverlay = useCallback(() => {
+    setOverlayVisible(false);
+  }, []);
 
-  useEffect(() => {
-    // Auto-submit when all 6 digits are filled
-    if (otp.every(digit => digit !== '')) {
-      handleSubmit();
-    }
-  }, [otp]);
-
-  const handleChange = (index: number, value: string) => {
-    if (value.length > 1) return;
-    if (value && !/^\d$/.test(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleSubmit = async () => {
-    const otpCode = otp.join('');
+  const handleSubmit = useCallback(async (otpArray: string[]) => {
+    const otpCode = otpArray.join('');
     if (otpCode.length !== 6) return;
 
     setLoading(true);
@@ -68,6 +52,40 @@ const VerifyEmail: React.FC = () => {
       // Verified! Go to complete profile
       navigate('/signup-form-2');
     }
+  }, [email, navigate]);
+
+  useEffect(() => {
+    if (!email) {
+      navigate('/signup-form');
+    }
+  }, [email, navigate]);
+
+  // Auto-submit when all 6 digits are filled
+  const isOtpComplete = otp.every(digit => digit !== '');
+  useEffect(() => {
+    if (isOtpComplete) {
+      handleSubmit(otp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOtpComplete]);
+
+  const handleChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    if (value && !/^\d$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
   };
 
   const handleResend = async () => {
@@ -76,11 +94,22 @@ const VerifyEmail: React.FC = () => {
     setLoading(false);
     
     if (resendError) {
-      setError(resendError);
+      const seconds = extractSecondsFromError(resendError);
+      if (seconds) {
+        setOverlayMessage('Try again after');
+        setOverlaySeconds(seconds);
+        setOverlayType('warning');
+        setOverlayVisible(true);
+      } else {
+        setError(resendError);
+      }
       return;
     }
     
-    alert('New code sent to your email!');
+    setOverlayMessage('New code sent to your email!');
+    setOverlaySeconds(undefined);
+    setOverlayType('success');
+    setOverlayVisible(true);
   };
 
   return (
@@ -124,7 +153,7 @@ const VerifyEmail: React.FC = () => {
       {/* Continue Button */}
       <Button 
         type="button"
-        onClick={handleSubmit}
+        onClick={() => handleSubmit(otp)}
         disabled={loading || otp.some(d => !d)}
         disabledStyle={false}
         variant="primary"
@@ -133,8 +162,26 @@ const VerifyEmail: React.FC = () => {
         Continue
       </Button>
 
+      {/* Resend Code */}
+      <button
+        onClick={handleResend}
+        disabled={loading}
+        className="text-primary text-xs underline mb-6 text-center"
+      >
+        Didn't receive code? Resend
+      </button>
+
       {/* Spacer */}
       <div className="flex-1"></div>
+
+      {/* Resend Overlay */}
+      <ResendOverlay
+        visible={overlayVisible}
+        message={overlayMessage}
+        secondsLeft={overlaySeconds}
+        onClose={closeOverlay}
+        type={overlayType}
+      />
     </PageLayout>
   );
 };
