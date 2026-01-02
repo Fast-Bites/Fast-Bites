@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import api, { MenuItemWithRestaurant } from '../lib/api';
+import api from '../lib/api';
+import type { MenuItemWithRestaurant } from '../lib/api';
+import { responsivePx, responsivePt } from '../constants/responsive';
 
 interface UserProfile {
   first_name?: string;
@@ -84,7 +86,7 @@ const Home: React.FC = () => {
   return (
     <div className="w-full min-h-screen bg-background font-[var(--font-poppins)]">
       {/* 1st section - Header (Fixed) */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background flex items-center justify-between px-4 pt-6 pb-3">
+      <div className={`fixed top-0 left-0 right-0 z-50 bg-background flex items-center justify-between ${responsivePx} ${responsivePt} pb-3`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center overflow-hidden">
             <img 
@@ -97,7 +99,7 @@ const Home: React.FC = () => {
             <h2 className="text-foreground text-lg">
               {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Guest' : 'Loading...'}
             </h2>
-            <p className="text-muted-foreground text-xs truncate max-w-[200px]">
+            <p className="text-muted-foreground text-xs truncate max-w-[150px] min-[400px]:max-w-[200px] min-[574px]:max-w-[360px]">
               {user?.address || 'No address set'}
             </p>
           </div>
@@ -124,7 +126,7 @@ const Home: React.FC = () => {
       <div className="h-20"></div>
 
       {/* 2nd section - Search */}
-      <div className="px-4 mt-4">
+      <div className={`${responsivePx} mt-4`}>
         <div className="relative rounded-full overflow-hidden">
           {/* Orange background layer */}
           <div className="absolute inset-0 bg-primary/20" />
@@ -164,7 +166,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* 3rd section - Categories */}
-      <div className="px-4 mt-6">
+      <div className={`${responsivePx} mt-6`}>
         {/* Restaurants - Large Card */}
         <div className="relative h-32 rounded-xl overflow-hidden mb-3">
           <img 
@@ -202,7 +204,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* 4th section - Meals */}
-      <div className="px-4 mt-10 pb-24">
+      <div className={`${responsivePx} mt-10 pb-24`}>
         <h2 className="text-foreground text-3xl mb-4">Meals</h2>
         
         {loading ? (
@@ -210,7 +212,7 @@ const Home: React.FC = () => {
         ) : meals.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">No meals available</div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 min-[500px]:grid-cols-3 min-[700px]:grid-cols-4 gap-2">
             {meals.map((meal) => (
               <div 
                 key={meal.id} 
@@ -256,13 +258,13 @@ const Home: React.FC = () => {
       </div>
 
       {/* 5th section - Bottom Navigation (Fixed) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-muted/20 px-4 py-2">
-        <div className="flex items-center justify-around">
+      <div className={`fixed bottom-0 left-0 right-0 bg-background border-t border-muted/20 ${responsivePx} py-2`}>
+        <div className="flex items-center justify-around min-[400px]:justify-center min-[400px]:gap-2 min-[574px]:gap-3">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-1 p-2 w-14 h-14 rounded-full transition-all items-center justify-center ${
+              className={`flex flex-col items-center gap-1 p-2 w-14 min-[400px]:flex-1 h-14 rounded-full min-[400px]:rounded-xl transition-all justify-center ${
                 activeTab === item.id 
                   ? 'bg-primary' 
                   : 'bg-transparent'

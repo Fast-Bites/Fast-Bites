@@ -6,6 +6,7 @@ import BackButton from '../components/BackButton';
 import LocationSearchInput from "../components/LocationSearchInput";
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import api from '../lib/api';
+import { responsivePx, responsivePt, responsivePy } from '../constants/responsive';
 
 const mapContainerStyle = {
   width: '100%',
@@ -232,7 +233,7 @@ const Map: React.FC = () => {
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen pointer-events-none">
         {/* Header - Back Button + Search Trigger */}
-        <div className="pt-8 px-4 pointer-events-auto">
+        <div className={`${responsivePt} ${responsivePx} pointer-events-auto`}>
           <div className="flex items-center gap-3">
             <BackButton variant="map" />
             {/* Search trigger button - opens fullscreen search */}
@@ -268,7 +269,7 @@ const Map: React.FC = () => {
         {/* Bottom Content */}
         <div className="relative w-full pointer-events-auto">
           {/* Black background section */}
-          <div className="w-full bg-black px-4 py-8 rounded-t-[3rem]">
+          <div className={`w-full bg-black ${responsivePx} ${responsivePy} rounded-t-[3rem]`}>
             {/* Error Message */}
             {error && (
               <p className="text-red-500 text-sm text-center mb-4">{error}</p>
@@ -295,7 +296,7 @@ const Map: React.FC = () => {
       {searchOverlayOpen && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           {/* Search Header */}
-          <div className="pt-8 px-4">
+          <div className={`${responsivePt} ${responsivePx}`}>
             <LocationSearchInput 
               onLocationSelect={handleLocationSelect}
               fullscreenMode={true}
@@ -309,7 +310,7 @@ const Map: React.FC = () => {
           <div className="flex-1" />
 
           {/* Bottom Section */}
-          <div className="px-4 py-8 space-y-1">
+          <div className={`${responsivePx} ${responsivePy} space-y-1`}>
             {/* Progress Bar */}
             <div className="h-1 bg-foreground rounded-full" />
 

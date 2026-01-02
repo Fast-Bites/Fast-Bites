@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Button from '../components/Button';
 import { api } from '../lib/api';
+import { responsivePx, responsivePy } from '../constants/responsive';
 
 const Complete: React.FC = () => {
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Complete: React.FC = () => {
 
     return (
         <div 
-          className={`w-full min-h-screen bg-black flex flex-col items-center justify-center p-2 gap-6`}
+          className={`w-full min-h-screen bg-black flex flex-col items-center justify-center ${responsivePx} ${responsivePy} gap-6`}
         >
           <img 
             src="/assets/checked 1.png" 

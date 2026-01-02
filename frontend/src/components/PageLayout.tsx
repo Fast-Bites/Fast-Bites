@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import BackButton from './BackButton';
+import { responsivePx, responsivePt, responsivePb } from '../constants/responsive';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -9,7 +10,7 @@ interface PageLayoutProps {
   showFooter?: boolean;
   /** Header variant style */
   headerVariant?: 'default' | 'map';
-  /** Custom padding-x for content - default: 'px-4' */
+  /** Custom padding-x for content - overrides responsive defaults */
   paddingX?: string;
   /** Additional className for the container */
   className?: string;
@@ -20,16 +21,19 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   showHeader = true,
   showFooter = true,
   headerVariant = 'default',
-  paddingX = 'px-4',
+  paddingX,
   className = '',
 }) => {
   const navigate = useNavigate();
+  
+  // Use custom paddingX if provided, otherwise use responsive defaults
+  const appliedPadding = paddingX ?? responsivePx;
 
   return (
-    <div className={`w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] ${paddingX} ${className}`}>
+    <div className={`w-full min-h-screen bg-background flex flex-col font-[var(--font-poppins)] ${appliedPadding} ${className}`}>
       {/* Header with Back Button */}
       {showHeader && (
-        <div className="pt-8">
+        <div className={responsivePt}>
           <BackButton variant={headerVariant} />
         </div>
       )}
@@ -43,7 +47,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
           {/* Spacer */}
           <div className="flex-1" />
           
-          <div className="pb-8 pt-12">
+          <div className={`${responsivePb} pt-12`}>
             <p className="text-muted-foreground text-xs text-center leading-relaxed">
               By using this application, you agree to our{' '}
               <button 
@@ -51,9 +55,11 @@ const PageLayout: React.FC<PageLayoutProps> = ({
                 className="text-primary"
               >
                 Terms
-              </button>{' '}
+              </button>
+              {' '}
               and
-              <br />
+              {' '}
+              {/* <br /> */}
               <button 
                 onClick={() => navigate('/privacy-policy')}
                 className="text-primary"

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
+import { responsivePx, responsivePt, responsivePb } from '../constants/responsive';
 
 const Intro2: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Intro2: React.FC = () => {
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Header with progress and skip */}
-        <div className="flex items-center pt-8 p-6 gap-3">
+        <div className={`flex items-center ${responsivePt} pb-6 ${responsivePx} gap-3`}>
           {/* Progress Indicator */}
           <div className="flex gap-3 flex-1">
             {steps.map((step) => (
@@ -49,7 +50,7 @@ const Intro2: React.FC = () => {
           <div className="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
           
           {/* Black background section */}
-          <div className="w-full bg-black px-6 pb-8">
+          <div className={`w-full bg-black ${responsivePx} ${responsivePb}`}>
             {/* Heading */}
             <h1 className="text-[1.75rem] font-light text-foreground leading-tight mb-3">
               Delivered in minutes,{' '}

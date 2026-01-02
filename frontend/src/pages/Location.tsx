@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import BackButton from '../components/BackButton';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
+import { responsivePx, responsivePt, responsivePb } from '../constants/responsive';
 
 // Helper to extract city and state from geocoding results
 const extractLocationDetails = (results: google.maps.GeocoderResult[]) => {
@@ -121,7 +122,7 @@ const Location: React.FC = () => {
         {/* Header with back button and heading */}
         <div className="relative w-full pointer-events-auto">
           {/* Black background section */}
-          <div className="w-full bg-black px-4 pt-8">
+          <div className={`w-full bg-black ${responsivePx} ${responsivePt}`}>
             {/* Back Button */}
             <BackButton />
             
@@ -145,7 +146,7 @@ const Location: React.FC = () => {
           <div className="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
           
           {/* Black background section */}
-          <div className="w-full bg-black px-4 pb-30">
+          <div className={`w-full bg-black ${responsivePx} ${responsivePb}`}>
             {/* Error Message */}
             {error && (
               <p className="text-red-500 text-sm text-center mb-4">{error}</p>
