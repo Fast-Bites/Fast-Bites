@@ -33,27 +33,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Loading state - checking authentication
   if (status === 'checking') {
     return (
-      <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-        {/* Rotating Logo */}
-        <div className="relative">
-          <img 
-            src="/logo/Fast bite transparent I.png" 
-            alt="Fast Bites" 
-            className="w-28 h-28 object-contain animate-spin-slow"
-          />
-          {/* Glow effect */}
-          <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        </div>
-        
-        {/* Loading text */}
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-foreground font-medium text-lg">Please wait</p>
-          <div className="flex gap-1">
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-          </div>
-        </div>
+      <div className="w-full min-h-screen bg-black flex flex-col items-center justify-center">
+        <img 
+          src="/logo/Fast bite transparent I.png" 
+          alt="Fast Bites" 
+          className="w-1/2 h-1/2 object-contain animate-zoom-pulse"
+        />
       </div>
     );
   }

@@ -50,6 +50,16 @@
   .animate-progress {
     animation: progress 2s ease-out forwards;
   }
+
+  /* Zoom pulse animation for loading */
+  .animate-zoom-pulse {
+    animation: zoom-pulse 2s ease-in-out infinite;
+  }
+
+  /* Fade in animation */
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
 }
 
 @keyframes spin-slow {
@@ -67,5 +77,25 @@
   }
   to {
     width: 100%;
+  }
+}
+
+@keyframes zoom-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

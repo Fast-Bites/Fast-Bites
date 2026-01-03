@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../lib/api';
 import type { MenuItemWithRestaurant } from '../lib/api';
 import { responsivePx, responsivePt } from '../constants/responsive';
@@ -42,6 +42,10 @@ const Home: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [meals, setMeals] = useState<MealDisplay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMeals, setSelectedMeals] = useState<Set<string>>(new Set());
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
+  const cartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,6 +74,15 @@ const Home: React.FC = () => {
     fetchData();
   }, []);
 
+  // Track scroll position to show/hide scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const categories = [
     { name: 'Shops', image: '/assets/shops.png' },
     { name: 'Pharmacy', image: '/assets/phamarcy.png' },
@@ -82,6 +95,27 @@ const Home: React.FC = () => {
     { id: 'support', label: 'Support', icon: '/assets/Chat-home.png' },
     { id: 'wallet', label: 'Wallet', icon: '/assets/Wallet-home.png' },
   ];
+
+  const showCartNotification = (type: 'added' | 'removed') => {
+    setCartMessage(type);
+    // Clear existing timer and set new one
+    if (cartTimerRef.current) clearTimeout(cartTimerRef.current);
+    cartTimerRef.current = setTimeout(() => setCartMessage(null), 2000);
+  };
+
+  const toggleMealSelection = (mealId: string) => {
+    setSelectedMeals(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(mealId)) {
+        newSet.delete(mealId);
+        showCartNotification('removed');
+      } else {
+        newSet.add(mealId);
+        showCartNotification('added');
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="w-full min-h-screen bg-background font-[var(--font-poppins)]">
@@ -204,7 +238,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* 4th section - Meals */}
-      <div className={`${responsivePx} mt-10 pb-24`}>
+      <div className={`${responsivePx} mt-20 pb-24`}>
         <h2 className="text-foreground text-3xl mb-4">Meals</h2>
         
         {loading ? (
@@ -212,7 +246,7 @@ const Home: React.FC = () => {
         ) : meals.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">No meals available</div>
         ) : (
-          <div className="grid grid-cols-2 min-[500px]:grid-cols-3 min-[700px]:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 min-[500px]:grid-cols-3 min-[700px]:grid-cols-4 gap-2 space-y-2">
             {meals.map((meal) => (
               <div 
                 key={meal.id} 
@@ -242,7 +276,14 @@ const Home: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-foreground font-bold text-base">{meal.price}</span>
-                    <button className="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
+                    <button 
+                      onClick={() => toggleMealSelection(meal.id)}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                        selectedMeals.has(meal.id)
+                          ? 'bg-transparent border-2 border-primary'
+                          : 'bg-primary'
+                      }`}
+                    >
                       <img 
                         src="/assets/plus 1-home.png" 
                         alt="Add" 
@@ -257,6 +298,34 @@ const Home: React.FC = () => {
         )}
       </div>
 
+      {/* Floating elements - positioned above bottom nav */}
+      <div className={`fixed bottom-20 left-0 right-0 ${responsivePx} pointer-events-none z-40 flex items-center justify-center h-12`}>
+        
+        {/* Cart Notification - Single popup that updates */}
+        {cartMessage && (
+          <div className={`pointer-events-auto rounded-lg px-4 py-2 shadow-lg animate-fade-in ${
+            cartMessage === 'added' ? 'bg-primary' : 'bg-muted'
+          }`}>
+            <span className="text-foreground font-medium text-xs whitespace-nowrap">
+              {cartMessage === 'added' ? 'Added to cart' : 'Removed from cart'}
+            </span>
+          </div>
+        )}
+
+        {/* Up Arrow Button - Right side, only shows when scrolled */}
+        {showScrollTop && (
+          <button 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="absolute right-4 min-[574px]:right-6 pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-lg border border-white/40 shadow-lg transition-opacity"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(50, 50, 50, 0.6) 100%)',
+            }}
+          >
+            <img src="/assets/arrow-up.png" alt="Up Arrow" className="w-7 h-7" />
+          </button>
+        )}
+      </div>
+
       {/* 5th section - Bottom Navigation (Fixed) */}
       <div className={`fixed bottom-0 left-0 right-0 bg-background border-t border-muted/20 ${responsivePx} py-2`}>
         <div className="flex items-center justify-around min-[400px]:justify-center min-[400px]:gap-2 min-[574px]:gap-3">
@@ -264,7 +333,7 @@ const Home: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-1 p-2 w-14 min-[400px]:flex-1 h-14 rounded-full min-[400px]:rounded-xl transition-all justify-center ${
+              className={`flex flex-col items-center gap-1 p-2 w-18 min-[400px]:flex-1 h-14 rounded-full transition-all justify-center ${
                 activeTab === item.id 
                   ? 'bg-primary' 
                   : 'bg-transparent'
