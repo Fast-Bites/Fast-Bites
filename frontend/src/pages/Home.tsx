@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import type { MenuItemWithRestaurant } from '../lib/api';
 import { responsivePx, responsivePt } from '../constants/responsive';
@@ -38,6 +39,7 @@ const formatDeliveryTime = (minutes?: number): string => {
 };
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [meals, setMeals] = useState<MealDisplay[]>([]);
@@ -202,7 +204,10 @@ const Home: React.FC = () => {
       {/* 3rd section - Categories */}
       <div className={`${responsivePx} mt-6`}>
         {/* Restaurants - Large Card */}
-        <div className="relative h-32 rounded-xl overflow-hidden mb-3">
+        <div 
+          className="relative h-32 rounded-xl overflow-hidden mb-3 cursor-pointer transition-transform active:scale-[0.98]"
+          onClick={() => navigate('/restaurants')}
+        >
           <img 
             src="/assets/restaurants-home.png" 
             alt="Restaurants" 
@@ -250,11 +255,12 @@ const Home: React.FC = () => {
             {meals.map((meal) => (
               <div 
                 key={meal.id} 
-                className="backdrop-blur-lg rounded-xl overflow-hidden"
+                className="backdrop-blur-lg rounded-xl overflow-hidden cursor-pointer transition-transform active:scale-95"
                 style={{ 
                   backgroundColor: 'hsla(0, 0%, 10%, 0.8)', 
                   border: '1px solid hsl(0, 0%, 20%)' 
                 }}
+                onClick={() => navigate(`/meal/${meal.id}`, { state: meal })}
               >
                 <div className="h-32 overflow-hidden">
                   <img 
@@ -277,7 +283,10 @@ const Home: React.FC = () => {
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-foreground font-bold text-base">{meal.price}</span>
                     <button 
-                      onClick={() => toggleMealSelection(meal.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMealSelection(meal.id);
+                      }}
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                         selectedMeals.has(meal.id)
                           ? 'bg-transparent border-2 border-primary'
@@ -332,7 +341,14 @@ const Home: React.FC = () => {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (item.id === 'wallet') {
+                  navigate('/wallet');
+                } else if (item.id === 'support') {
+                  navigate('/support');
+                }
+              }}
               className={`flex flex-col items-center gap-1 p-2 w-18 min-[400px]:flex-1 h-14 rounded-full transition-all justify-center ${
                 activeTab === item.id 
                   ? 'bg-primary' 

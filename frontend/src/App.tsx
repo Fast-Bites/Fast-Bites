@@ -21,6 +21,13 @@ import ChangePassword from './pages/ChangePassword';
 import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Home from './pages/Home';
+import MealDetails from './pages/MealDetails';
+import Restaurants from './pages/Restaurants';
+import RestaurantProfile from './pages/RestaurantProfile';
+import Wallet from './pages/Wallet';
+import Support from './pages/Support';
+import Deposit from './pages/Deposit';
+import DepositSuccess from './pages/DepositSuccess';
 import './App.css';
 
 function App() {
@@ -50,6 +57,13 @@ function App() {
           <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
           <Route path="/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/meal/:id" element={<ProtectedRoute><MealDetails /></ProtectedRoute>} />
+          <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
+          <Route path="/restaurant/:id" element={<ProtectedRoute><RestaurantProfile /></ProtectedRoute>} />
+          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+          <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+          <Route path="/deposit" element={<ProtectedRoute><Deposit /></ProtectedRoute>} />
+          <Route path="/deposit-success" element={<ProtectedRoute><DepositSuccess /></ProtectedRoute>} />
         </Routes>
       </MobileOnly>
     </BrowserRouter>
