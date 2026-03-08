@@ -5,18 +5,22 @@ interface BackButtonProps {
   variant?: 'default' | 'map';
   /** Additional className */
   className?: string;
+  /** If provided, navigate to this path instead of history back */
+  to?: string;
 }
 
 const BackButton: React.FC<BackButtonProps> = ({ 
   variant = 'default',
-  className = '' 
+  className = '',
+  to
 }) => {
   const navigate = useNavigate();
+  const handleClick = () => to ? navigate(to) : navigate(-1);
 
   if (variant === 'map') {
     return (
       <button 
-        onClick={() => navigate(-1)}
+        onClick={handleClick}
         className={`bg-primary rounded-full w-10 h-10 flex items-center justify-center ${className}`}
       >
         <img src="/assets/Back.svg" alt="Back" className="w-5 h-5" />
@@ -26,7 +30,7 @@ const BackButton: React.FC<BackButtonProps> = ({
 
   return (
     <button 
-      onClick={() => navigate(-1)}
+      onClick={handleClick}
       className={`${className}`}
     >
       <img src="/assets/Back.svg" alt="Back" className="w-5 h-5" />

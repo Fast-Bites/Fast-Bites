@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, Restaurant } from '../lib/api';
+import { api } from '../lib/api';
+import type { Restaurant } from '../lib/api';
 
 const placeholderRestaurants: Restaurant[] = [
   {
@@ -12,7 +13,6 @@ const placeholderRestaurants: Restaurant[] = [
     image_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=250&fit=crop',
     rating: 4.0,
     is_open: true,
-    created_at: new Date().toISOString(),
   },
   {
     id: '2',
@@ -23,7 +23,6 @@ const placeholderRestaurants: Restaurant[] = [
     image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=250&fit=crop',
     rating: 3.5,
     is_open: false,
-    created_at: new Date().toISOString(),
   },
   {
     id: '3',
@@ -34,7 +33,7 @@ const placeholderRestaurants: Restaurant[] = [
     image_url: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400&h=250&fit=crop',
     rating: 4.5,
     is_open: true,
-    created_at: new Date().toISOString(),
+    
   },
 ];
 
@@ -48,9 +47,9 @@ const Restaurants = () => {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>(placeholderRestaurants);
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -67,14 +66,14 @@ const Restaurants = () => {
   }, []);
 
   const handleMouseEnter = (id: string) => {
-    setHoveredId(id);
+    // hover tracked via tooltip only
     hoverTimeoutRef.current = setTimeout(() => {
       setShowTooltip(id);
     }, 1000);
   };
 
   const handleMouseLeave = () => {
-    setHoveredId(null);
+    
     setShowTooltip(null);
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);

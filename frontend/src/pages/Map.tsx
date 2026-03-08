@@ -67,6 +67,7 @@ const Map: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
+  const [searchHasPredictions, setSearchHasPredictions] = useState(false);
 
   // All hooks must be called before any conditional returns
   const handleLocationSelect = useCallback((location: { address: string; lat: number; lng: number }) => {
@@ -302,17 +303,29 @@ const Map: React.FC = () => {
               fullscreenMode={true}
               autoFocus={true}
               className="flex-1"
-              onBackClick={() => setSearchOverlayOpen(false)}
+              onBackClick={() => { setSearchOverlayOpen(false); setSearchHasPredictions(false); }}
+              onHasPredictions={setSearchHasPredictions}
             />
           </div>
           
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Center placeholder - shown when no predictions */}
+          {!searchHasPredictions ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 pb-8">
+              <img
+                src="/assets/location 1.png"
+                alt="Search location"
+                className="w-24 h-24"
+              />
+              <p className="text-muted-foreground/50 text-xs">Search for your location</p>
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
 
           {/* Bottom Section */}
           <div className={`${responsivePx} ${responsivePy} space-y-1`}>
             {/* Progress Bar */}
-            <div className="h-1 bg-foreground rounded-full" />
+            <div className="h-1 bg-foreground/20 rounded-full" />
 
             {/* Choose on map */}
             <div
@@ -321,9 +334,9 @@ const Map: React.FC = () => {
               <img 
                 src="assets/choose-map.png" 
                 alt="choose on map" 
-                className="w-4 h-4"
+                className="w-5 h-5"
               />
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground text-lg">
                 Choose on map
               </span>
             </div>
@@ -331,7 +344,7 @@ const Map: React.FC = () => {
             {/* Back to Map Button */}
             <Button 
               variant="primary"
-              onClick={() => setSearchOverlayOpen(false)}
+              onClick={() => { setSearchOverlayOpen(false); setSearchHasPredictions(false); }}
             >
               Back to Map
             </Button>

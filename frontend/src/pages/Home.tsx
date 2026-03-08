@@ -21,7 +21,7 @@ interface MealDisplay {
 
 // Placeholder images for meals without images - randomly assigned
 const PLACEHOLDER_IMAGES = [
-  'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop', // Pizza
+  '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', // Pizza
   'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop', // Pancakes
   'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Salad
   'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop', // BBQ
@@ -41,6 +41,7 @@ const formatDeliveryTime = (minutes?: number): string => {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [meals, setMeals] = useState<MealDisplay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,36 +125,40 @@ const Home: React.FC = () => {
       {/* 1st section - Header (Fixed) */}
       <div className={`fixed top-0 left-0 right-0 z-50 bg-background flex items-center justify-between ${responsivePx} ${responsivePt} pb-3`}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center overflow-hidden">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden">
             <img 
-              src="/assets/user 1 1-home.png" 
+              src="/assets/stefan-stefancik-QXevDflbl8A-unsplash 1.png"
               alt="User" 
               className="w-full h-full object-cover"
             />
           </div>
           <div>
-            <h2 className="text-foreground text-lg">
+            <h2 className="text-foreground text-md">
               {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Guest' : 'Loading...'}
             </h2>
-            <p className="text-muted-foreground text-xs truncate max-w-[150px] min-[400px]:max-w-[200px] min-[574px]:max-w-[360px]">
+            <p className="text-muted-foreground text-[10px] truncate max-w-[150px] min-[400px]:max-w-[200px] min-[574px]:max-w-[360px]">
               {user?.address || 'No address set'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="w-10 h-10 flex items-center justify-center">
-            <img 
-              src="/assets/notification.png" 
-              alt="History" 
-              className="w-7 h-7"
-            />
-          </button>
-          <button className="w-10 h-10 flex items-center justify-center">
-            <img 
-              src="/assets/shopping-cart-home.png" 
-              alt="Cart" 
-              className="w-7 h-7"
-            />
+        <div className="flex items-center gap-3">
+          {/* Expanded menu options */}
+          <div className={`flex items-center gap-3 transition-all duration-300 overflow-hidden ${menuOpen ? 'max-w-[6rem] opacity-100' : 'max-w-0 opacity-0'}`}>
+            <button className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <img src="/assets/notification.png" alt="Notifications" className="w-6 h-6" />
+            </button>
+            <button className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <img src="/assets/shopping-cart-home.png" alt="Cart" className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Menu toggle button */}
+          <button
+            onClick={() => setMenuOpen(prev => !prev)}
+            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0 transition-transform duration-300"
+            style={{ transform: menuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+          >
+            <img src="/assets/more 1.svg" alt="Menu" className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -325,12 +330,9 @@ const Home: React.FC = () => {
         {showScrollTop && (
           <button 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="absolute right-4 min-[574px]:right-6 pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-lg border border-white/40 shadow-lg transition-opacity"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(50, 50, 50, 0.6) 100%)',
-            }}
+            className="absolute right-4 min-[574px]:right-6 pointer-events-auto"
           >
-            <img src="/assets/arrow-up.png" alt="Up Arrow" className="w-7 h-7" />
+            <img src="/assets/Back to top.png" alt="Back to top" className="w-15 h-15" />
           </button>
         )}
       </div>

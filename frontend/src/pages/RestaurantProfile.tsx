@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Restaurant } from '../lib/api';
+import type { Restaurant } from '../lib/api';
 
 interface MenuItem {
   id: string;

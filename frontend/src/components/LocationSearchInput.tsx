@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { FiSearch, FiMapPin, FiChevronDown, FiChevronLeft } from "react-icons/fi";
 
 interface LocationSearchInputProps {
@@ -16,6 +16,8 @@ interface LocationSearchInputProps {
   autoFocus?: boolean;
   /** Callback when back button is clicked (fullscreen mode) */
   onBackClick?: () => void;
+  /** Callback fired when predictions appear or disappear */
+  onHasPredictions?: (hasPredictions: boolean) => void;
 }
 
 const LocationSearchInput: React.FC<LocationSearchInputProps> = ({ 
@@ -25,6 +27,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   fullscreenMode = false,
   autoFocus = false,
   onBackClick,
+  onHasPredictions,
 }) => {
   const [query, setQuery] = useState(initialValue);
   const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
@@ -50,13 +53,18 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
     }
   }, [autoFocus]);
 
+  const updatePredictions = useCallback((results: google.maps.places.AutocompletePrediction[]) => {
+    setPredictions(results);
+    onHasPredictions?.(results.length > 0);
+  }, [onHasPredictions]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
     setOpen(true);
 
     if (!value || !autocompleteService.current) {
-      setPredictions([]);
+      updatePredictions([]);
       return;
     }
 
@@ -69,9 +77,9 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
       },
       (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          setPredictions(results);
+          updatePredictions(results);
         } else {
-          setPredictions([]);
+          updatePredictions([]);
         }
       }
     );
@@ -96,7 +104,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
           
           setQuery(location.address);
           setOpen(false);
-          setPredictions([]);
+          updatePredictions([]);
           
           // Notify parent component
           onLocationSelect?.(location);
