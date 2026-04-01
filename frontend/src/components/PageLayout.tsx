@@ -10,6 +10,8 @@ interface PageLayoutProps {
   showFooter?: boolean;
   /** Header variant style */
   headerVariant?: 'default' | 'map';
+  /** Shown beside map back button when `headerVariant` is `map` */
+  headerTitle?: string;
   /** Custom padding-x for content - overrides responsive defaults */
   paddingX?: string;
   /** Additional className for the container */
@@ -21,6 +23,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   showHeader = true,
   showFooter = true,
   headerVariant = 'default',
+  headerTitle,
   paddingX,
   className = '',
 }) => {
@@ -34,7 +37,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       {/* Header with Back Button */}
       {showHeader && (
         <div className={responsivePt}>
-          <BackButton variant={headerVariant} />
+          <BackButton variant={headerVariant} title={headerTitle} />
         </div>
       )}
 

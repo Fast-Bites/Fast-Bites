@@ -82,9 +82,8 @@ const MealDetails: React.FC = () => {
       </div>
 
       {/* Header - sibling of sheet, higher z-index so it stays on top and clickable */}
-      <div className={`absolute top-0 left-0 right-0 ${responsivePx} pt-10 flex items-center z-[50]`}>
-        <BackButton variant="map" className="flex-shrink-0" />
-        <h1 className="flex-1 text-center text-foreground text-3xl font-bold -ml-10 pointer-events-none">Details</h1>
+      <div className={`absolute top-0 left-0 right-0 z-[50] ${responsivePx} pt-10`}>
+        <BackButton variant="map" title="Details" to="/home" />
       </div>
 
       {/* Bottom Sheet */}

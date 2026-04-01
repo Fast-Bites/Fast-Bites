@@ -9,6 +9,8 @@
   --color-accent-foreground: hsl(0 0% 0%);
   --color-muted: hsl(0 0% 40%);
   --color-muted-foreground: hsl(0 0% 78%);
+  /* Overlay panel (e.g. ResendOverlay glass card) — use bg-overlay-panel-background */
+  --color-overlay-panel-background: #272727;
   --font-poppins: 'Poppins', sans-serif;
 }
 

@@ -6,6 +6,9 @@ interface ResendOverlayProps {
   secondsLeft?: number;
   onClose: () => void;
   type?: 'warning' | 'success';
+  iconSrc?: string;
+  title?: string;
+  align?: 'center' | 'left';
 }
 
 const ResendOverlay: React.FC<ResendOverlayProps> = ({ 
@@ -13,15 +16,12 @@ const ResendOverlay: React.FC<ResendOverlayProps> = ({
   message, 
   secondsLeft: initialSeconds,
   onClose,
-  type = 'warning'
+  type = 'warning',
+  iconSrc,
+  title,
+  align = 'center',
 }) => {
   const [countdown, setCountdown] = useState(initialSeconds || 0);
-
-  useEffect(() => {
-    if (initialSeconds) {
-      setCountdown(initialSeconds);
-    }
-  }, [initialSeconds]);
 
   useEffect(() => {
     if (!visible || countdown <= 0) return;
@@ -52,37 +52,72 @@ const ResendOverlay: React.FC<ResendOverlayProps> = ({
   }, [visible, type, onClose]);
 
   if (!visible) return null;
+  const resolvedIconSrc = iconSrc ?? (type === 'warning' ? '/assets/warning 1.svg' : '/assets/checked 1.png');
+  const resolvedIconAlt = type === 'warning' ? 'Warning' : 'Success';
+  const isLeftAligned = align === 'left';
+  const messageLines = message.split('\n');
+  const isMultilineMessage = messageLines.length > 1;
 
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Blurred backdrop */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+      {/*
+        Manual tuning — overlay chrome:
+        • Backdrop darkness: bg-black/35 (raise /35 → darker screen)
+        • Backdrop blur: backdrop-blur-[1px] (0 = none, 2px = a bit more)
+      */}
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
       
       {/* Centered content wrapper */}
       <div className="relative z-10 flex flex-col items-center">
-        {/* Glassy Content Container */}
+        {/* Panel — bg from @theme: overlay-panel-background (see src/constants/colors.ts) */}
         <div 
-          className="flex flex-col items-center px-6 py-4 max-w-lg mx-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg"
+          className={`flex flex-col px-6 py-4 max-w-lg mx-4 rounded-xl border border-white/15 bg-overlay-panel-background shadow-lg backdrop-blur-md ${
+            isLeftAligned ? 'items-start' : 'items-center'
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Icon */}
-          <img 
-            src={type === 'warning' ? '/assets/warning 1.svg' : '/assets/checked 1.png'} 
-            alt={type === 'warning' ? 'Warning' : 'Success'} 
-            className="w-8 h-8 mb-4"
-          />
+          {title ? (
+            <div className="mb-3 flex items-center gap-2">
+              <img src={resolvedIconSrc} alt={resolvedIconAlt} className="h-5 w-5 shrink-0 opacity-80" />
+              <span className="text-lg font-semibold text-foreground">{title}</span>
+            </div>
+          ) : (
+            <img 
+              src={resolvedIconSrc} 
+              alt={resolvedIconAlt} 
+              className="w-8 h-8 mb-4"
+            />
+          )}
           
-          {/* Message with Countdown */}
-          <p className="text-foreground text-center text-sm font-regular">
-            {message}{type === 'warning' && countdown > 0 && ` ${countdown} seconds`}
-          </p>
+          {/* Message with Countdown — multiline gets slightly larger gaps between lines (gap-2) */}
+          {isMultilineMessage ? (
+            <div
+              className={`flex w-full flex-col gap-2 text-sm font-regular text-foreground ${
+                isLeftAligned ? 'text-left' : 'text-center items-center'
+              }`}
+            >
+              {messageLines.map((line, i) => (
+                <p key={i} className={isLeftAligned ? 'text-left' : 'text-center'}>
+                  {line}
+                  {i === messageLines.length - 1 &&
+                    type === 'warning' &&
+                    countdown > 0 &&
+                    ` ${countdown} seconds`}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className={`whitespace-pre-line text-foreground text-sm font-regular ${isLeftAligned ? 'text-left' : 'text-center'}`}>
+              {message}{type === 'warning' && countdown > 0 && ` ${countdown} seconds`}
+            </p>
+          )}
         </div>
 
-        {/* Tap to close hint - outside the container */}
-        <p className="text-muted-foreground text-xs mt-4">
+        {/* Tap to close — mt-4 = gap under card; increase for more space */}
+        <p className="mt-4 text-xs text-muted-foreground">
           Tap anywhere to close
         </p>
       </div>
