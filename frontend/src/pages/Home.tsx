@@ -5,6 +5,7 @@ import type { MenuItemWithRestaurant } from '../lib/api';
 import { formatDeliveryTime } from '../lib/formatDeliveryTime';
 import { responsivePx, responsivePt } from '../constants/responsive';
 import SearchBar from '../components/SearchBar';
+import BottomNav from '../components/BottomNav';
 
 interface UserProfile {
   first_name?: string;
@@ -31,7 +32,6 @@ const PLACEHOLDER_IMAGES = [
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('home');
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [meals, setMeals] = useState<MealDisplay[]>([]);
@@ -81,13 +81,6 @@ const Home: React.FC = () => {
     { name: 'Shops', image: '/assets/shops.png' },
     { name: 'Pharmacy', image: '/assets/phamarcy.png' },
     { name: 'Local Market', image: '/assets/local market.png' },
-  ];
-
-  const navItems = [
-    { id: 'home', label: 'Home', icon: '/assets/Home-home.png' },
-    { id: 'discover', label: 'Discover', icon: '/assets/Discover-home.png' },
-    { id: 'support', label: 'Support', icon: '/assets/Chat-home.png' },
-    { id: 'wallet', label: 'Wallet', icon: '/assets/Wallet-home.png' },
   ];
 
   const showCartNotification = (type: 'added' | 'removed') => {
@@ -293,42 +286,7 @@ const Home: React.FC = () => {
         )}
       </div>
 
-      {/* 5th section - Bottom Navigation (Fixed) */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-background border-t border-muted/20 ${responsivePx} py-2`}>
-        <div className="flex items-center justify-around min-[400px]:justify-center min-[400px]:gap-2 min-[574px]:gap-3">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                if (item.id === 'wallet') {
-                  navigate('/wallet');
-                } else if (item.id === 'support') {
-                  navigate('/support');
-                }
-              }}
-              className={`flex flex-col items-center gap-1 p-2 w-18 min-[400px]:flex-1 h-14 rounded-full transition-all justify-center ${
-                activeTab === item.id 
-                  ? 'bg-primary' 
-                  : 'bg-transparent'
-              }`}
-            >
-              <img 
-                src={item.icon} 
-                alt={item.label} 
-                className="w-[18px] h-[18px]"
-              />
-              <span className={`text-[10px] ${
-                activeTab === item.id 
-                  ? 'text-foreground font-medium' 
-                  : 'text-muted-foreground'
-              }`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <BottomNav />
     </div>
   );
 };

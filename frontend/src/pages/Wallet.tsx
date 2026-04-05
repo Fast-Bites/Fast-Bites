@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import BottomNav from '../components/BottomNav';
 
 interface UserProfile {
   first_name?: string;
@@ -19,7 +20,6 @@ interface Transaction {
 
 const Wallet: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('wallet');
   const [user, setUser] = useState<UserProfile | null>(null);
 
   // Dummy data
@@ -41,20 +41,6 @@ const Wallet: React.FC = () => {
     };
     fetchProfile();
   }, []);
-
-  const navItems = [
-    { id: 'home', label: 'Home', icon: '/assets/Home-home.png' },
-    { id: 'discover', label: 'Discover', icon: '/assets/Discover-home.png' },
-    { id: 'support', label: 'Support', icon: '/assets/Chat-home.png' },
-    { id: 'wallet', label: 'Wallet', icon: '/assets/Wallet-home.png' },
-  ];
-
-  const handleNavClick = (id: string) => {
-    setActiveTab(id);
-    if (id === 'home') {
-      navigate('/home');
-    }
-  };
 
   return (
     <div className="w-full min-h-screen bg-[#1a1a1a] font-[var(--font-poppins)]">
@@ -165,35 +151,7 @@ const Wallet: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#1a1a1a] border-t border-white/10 px-4 py-2">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center gap-1 py-2 px-4 rounded-full transition-all ${
-                activeTab === item.id 
-                  ? 'bg-[#FF6B35]' 
-                  : 'bg-transparent'
-              }`}
-            >
-              <img 
-                src={item.icon} 
-                alt={item.label} 
-                className="w-5 h-5"
-              />
-              <span className={`text-xs ${
-                activeTab === item.id 
-                  ? 'text-white font-medium' 
-                  : 'text-gray-500'
-              }`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <BottomNav />
     </div>
   );
 };

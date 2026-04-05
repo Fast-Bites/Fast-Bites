@@ -25,6 +25,7 @@ import MealDetails from './pages/MealDetails';
 import Restaurants from './pages/Restaurants';
 import RestaurantProfile from './pages/RestaurantProfile';
 import Wallet from './pages/Wallet';
+import Discover from './pages/Discover';
 import Support from './pages/Support';
 import Deposit from './pages/Deposit';
 import DepositSuccess from './pages/DepositSuccess';
@@ -59,8 +60,14 @@ function App() {
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           <Route path="/meal/:id" element={<ProtectedRoute><MealDetails /></ProtectedRoute>} />
           <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
+          {/* Nested meal under restaurant — URL stays under /restaurant/... */}
+          <Route
+            path="/restaurant/:restaurantId/meal/:mealId"
+            element={<ProtectedRoute><MealDetails /></ProtectedRoute>}
+          />
           <Route path="/restaurant/:id" element={<ProtectedRoute><RestaurantProfile /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+          <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
           <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           <Route path="/deposit" element={<ProtectedRoute><Deposit /></ProtectedRoute>} />
           <Route path="/deposit-success" element={<ProtectedRoute><DepositSuccess /></ProtectedRoute>} />

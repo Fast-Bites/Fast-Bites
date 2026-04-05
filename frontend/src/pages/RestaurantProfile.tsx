@@ -97,16 +97,19 @@ const RestaurantProfile = () => {
   };
 
   const handleItemClick = (item: MenuItem) => {
-    navigate(`/meal/${item.id}`, {
+    navigate(`/restaurant/${restaurant.id}/meal/${item.id}`, {
       state: {
-        id: item.id,
-        name: item.name,
-        restaurant: restaurant.name,
-        time: formatDeliveryTime(item.deliveryMinutes),
-        price: `₦${item.price.toLocaleString()}`,
-        image: item.image,
-        rating: 4,
-      }
+        meal: {
+          id: item.id,
+          name: item.name,
+          restaurant: restaurant.name,
+          time: formatDeliveryTime(item.deliveryMinutes),
+          price: `₦${item.price.toLocaleString()}`,
+          image: item.image,
+          rating: 4,
+        },
+        restaurant,
+      },
     });
   };
 
