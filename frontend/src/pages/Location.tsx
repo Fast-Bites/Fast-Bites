@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import BackButton from '../components/BackButton';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
@@ -26,6 +26,8 @@ const extractLocationDetails = (results: google.maps.GeocoderResult[]) => {
 
 const Location: React.FC = () => {
   const navigate = useNavigate();
+  const { state } = useLocation() as { state?: { fromMenu?: boolean } };
+  const fromMenu = state?.fromMenu === true;
   const { isLoaded } = useGoogleMaps(); // Still needed for reverse geocoding
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,15 +124,18 @@ const Location: React.FC = () => {
         {/* Header with back button and heading */}
         <div className="relative w-full pointer-events-auto">
           {/* Black background section */}
-          <div className={`w-full bg-black ${responsivePx} ${responsivePt}`}>
+          <div
+            className={`w-full bg-black ${responsivePx} ${responsivePt} ${fromMenu ? 'pb-4' : ''}`}
+          >
             {/* Back Button */}
             <BackButton />
-            
-            {/* Heading */}
-            <h1 className="text-[1.75rem] font-light text-foreground leading-tight text-center">
-              Set your location <br />
-              to start your journey
-            </h1>
+
+            {!fromMenu && (
+              <h1 className="text-center text-[1.75rem] font-light leading-tight text-foreground">
+                Set your location <br />
+                to start your journey
+              </h1>
+            )}
           </div>
           
           {/* Gradient shadow extending downward */}

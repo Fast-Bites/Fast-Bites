@@ -11,6 +11,8 @@
   --color-muted-foreground: hsl(0 0% 78%);
   /* Overlay panel (e.g. ResendOverlay glass card) — use bg-overlay-panel-background */
   --color-overlay-panel-background: #272727;
+  /* App green (success, open, positive) — use text-app-green, bg-app-green; mirrors `colors.appGreen` */
+  --color-app-green: #00ff00;
   --font-poppins: 'Poppins', sans-serif;
 }
 

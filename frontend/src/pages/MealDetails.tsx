@@ -231,7 +231,7 @@ const MealDetails: React.FC = () => {
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.sauce ? 'font-medium text-green-500' : 'text-muted-foreground'}`}>
+          <p className={`mt-1 text-right text-xs ${serving.sauce ? 'font-medium text-app-green' : 'text-muted-foreground'}`}>
             Cost: ₦{saucePrice.toLocaleString()}
           </p>
         </div>
@@ -279,7 +279,7 @@ const MealDetails: React.FC = () => {
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.extras ? 'font-medium text-green-500' : 'text-muted-foreground'}`}>
+          <p className={`mt-1 text-right text-xs ${serving.extras ? 'font-medium text-app-green' : 'text-muted-foreground'}`}>
             Cost: ₦{extrasPrice.toLocaleString()}
           </p>
         </div>
@@ -479,7 +479,7 @@ const MealDetails: React.FC = () => {
               <button
                 type="button"
                 onClick={confirmDeleteServing}
-                className="flex-1 rounded-md bg-green-400 py-2 text-center text-sm font-semibold text-black transition-opacity hover:opacity-80"
+                className="flex-1 rounded-md bg-app-green py-2 text-center text-sm font-semibold text-black transition-opacity hover:opacity-80"
               >
                 Yes
               </button>

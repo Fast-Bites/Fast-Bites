@@ -142,7 +142,7 @@ const Wallet: React.FC = () => {
 
               {/* Amount */}
               <div className="flex-shrink-0">
-                <span className={`font-bold text-base ${transaction.isPositive ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                <span className={`font-bold text-base ${transaction.isPositive ? 'text-app-green' : 'text-[#EF4444]'}`}>
                   {transaction.isPositive ? '+' : '-'}₦{transaction.amount.toLocaleString()}
                 </span>
               </div>

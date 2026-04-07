@@ -142,10 +142,10 @@ const Restaurants = () => {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span
                       className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                        isOpen ? 'bg-green-500' : 'bg-red-500'
+                        isOpen ? 'bg-app-green' : 'bg-red-500'
                       }`}
                     />
-                    <span className={`text-xs font-medium ${isOpen ? 'text-green-500' : 'text-red-500'}`}>
+                    <span className={`text-xs font-medium ${isOpen ? 'text-app-green' : 'text-red-500'}`}>
                       {isOpen ? 'Open' : 'Closed'}
                     </span>
                     <span className="text-xs text-muted-foreground" aria-hidden="true">

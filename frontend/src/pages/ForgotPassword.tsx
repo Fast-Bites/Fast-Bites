@@ -180,7 +180,7 @@ const ForgotPassword: React.FC = () => {
       {emailSent && !showOtpInput && (
         <div className="flex flex-col">
           {/* Success message */}
-          <p className="text-green-500 text-sm mb-6">
+          <p className="text-app-green text-sm mb-6">
             Reset link sent! Check your email.
           </p>
 

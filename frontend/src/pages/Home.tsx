@@ -6,6 +6,7 @@ import { formatDeliveryTime } from '../lib/formatDeliveryTime';
 import { responsivePx, responsivePt } from '../constants/responsive';
 import SearchBar from '../components/SearchBar';
 import BottomNav from '../components/BottomNav';
+import MenuOverlay from '../components/MenuOverlay';
 
 interface UserProfile {
   first_name?: string;
@@ -21,6 +22,9 @@ interface MealDisplay {
   price: string;
   image: string;
 }
+
+/** Same avatar as header + menu overlay profile row */
+const PROFILE_AVATAR_IMAGE = '/assets/stefan-stefancik-QXevDflbl8A-unsplash 1.png';
 
 // Placeholder images for meals without images - randomly assigned
 const PLACEHOLDER_IMAGES = [
@@ -111,7 +115,7 @@ const Home: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden">
             <img 
-              src="/assets/stefan-stefancik-QXevDflbl8A-unsplash 1.png"
+              src={PROFILE_AVATAR_IMAGE}
               alt="User" 
               className="w-full h-full object-cover"
             />
@@ -125,26 +129,12 @@ const Home: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Expanded menu options */}
-          <div className={`flex items-center gap-3 transition-all duration-300 overflow-hidden ${menuOpen ? 'max-w-[6rem] opacity-100' : 'max-w-0 opacity-0'}`}>
-            <button className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-              <img src="/assets/notification.png" alt="Notifications" className="w-6 h-6" />
-            </button>
-            <button className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-              <img src="/assets/shopping-cart-home.png" alt="Cart" className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Menu toggle button */}
-          <button
-            onClick={() => setMenuOpen(prev => !prev)}
-            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0 transition-transform duration-300"
-            style={{ transform: menuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
-          >
-            <img src="/assets/more 1.svg" alt="Menu" className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0"
+        >
+          <img src="/assets/more 1.svg" alt="Menu" className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Spacer for fixed header */}
@@ -286,6 +276,12 @@ const Home: React.FC = () => {
         )}
       </div>
 
+      <MenuOverlay
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        user={user}
+        profileImageSrc={PROFILE_AVATAR_IMAGE}
+      />
       <BottomNav />
     </div>
   );
