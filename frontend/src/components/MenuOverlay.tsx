@@ -8,6 +8,8 @@ interface MenuOverlayProps {
   /** Same source as Home header avatar */
   profileImageSrc: string;
   user?: { first_name?: string; last_name?: string; address?: string } | null;
+  /** Delete Account opens confirmation on Home instead of navigating. */
+  onDeleteAccount?: () => void;
 }
 
 const MENU_ITEMS = [
@@ -25,6 +27,7 @@ const MenuOverlay: React.FC<MenuOverlayProps> = ({
   onClose,
   user,
   profileImageSrc,
+  onDeleteAccount,
 }) => {
   const navigate = useNavigate();
 
@@ -42,6 +45,15 @@ const MenuOverlay: React.FC<MenuOverlayProps> = ({
     } else {
       navigate(path);
     }
+  };
+
+  const handleMenuRowClick = (path: string) => {
+    if (path === '/delete-account' && onDeleteAccount) {
+      onClose();
+      onDeleteAccount();
+      return;
+    }
+    handleItemClick(path);
   };
 
   return (
@@ -92,7 +104,7 @@ const MenuOverlay: React.FC<MenuOverlayProps> = ({
             <button
               key={item.label}
               type="button"
-              onClick={() => handleItemClick(item.path)}
+              onClick={() => handleMenuRowClick(item.path)}
               className="flex w-full items-center justify-between rounded-xl border border-muted/20 px-4 py-3"
               style={{ backgroundColor: 'hsl(0, 0%, 15%)' }}
             >

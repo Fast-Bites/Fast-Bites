@@ -25,10 +25,17 @@ import MealDetails from './pages/MealDetails';
 import Restaurants from './pages/Restaurants';
 import RestaurantProfile from './pages/RestaurantProfile';
 import Wallet from './pages/Wallet';
+import WalletTransactions from './pages/WalletTransactions';
+import AddCard from './pages/AddCard';
 import Discover from './pages/Discover';
 import Support from './pages/Support';
+import SupportChat from './pages/SupportChat';
 import Deposit from './pages/Deposit';
+import DepositBankTransferDetails from './pages/DepositBankTransferDetails';
 import DepositSuccess from './pages/DepositSuccess';
+import Cart from './pages/Cart';
+import Order from './pages/Order';
+import Logout from './pages/Logout';
 import './App.css';
 
 function App() {
@@ -51,13 +58,16 @@ function App() {
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          
+          <Route path="/logout" element={<Logout />} />
+
           {/* Protected Routes - require authentication */}
           <Route path="/signup-form-2" element={<ProtectedRoute><SignUpForm2 /></ProtectedRoute>} />
           <Route path="/location" element={<ProtectedRoute><Location /></ProtectedRoute>} />
           <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
           <Route path="/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Order /></ProtectedRoute>} />
           <Route path="/meal/:id" element={<ProtectedRoute><MealDetails /></ProtectedRoute>} />
           <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
           {/* Nested meal under restaurant — URL stays under /restaurant/... */}
@@ -67,9 +77,16 @@ function App() {
           />
           <Route path="/restaurant/:id" element={<ProtectedRoute><RestaurantProfile /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+          <Route path="/wallet/transactions" element={<ProtectedRoute><WalletTransactions /></ProtectedRoute>} />
+          <Route path="/wallet/add-card" element={<ProtectedRoute><AddCard /></ProtectedRoute>} />
           <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
           <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+          <Route path="/support/chat/:chatId" element={<ProtectedRoute><SupportChat /></ProtectedRoute>} />
           <Route path="/deposit" element={<ProtectedRoute><Deposit /></ProtectedRoute>} />
+          <Route
+            path="/deposit/bank-transfer-details"
+            element={<ProtectedRoute><DepositBankTransferDetails /></ProtectedRoute>}
+          />
           <Route path="/deposit-success" element={<ProtectedRoute><DepositSuccess /></ProtectedRoute>} />
         </Routes>
       </MobileOnly>

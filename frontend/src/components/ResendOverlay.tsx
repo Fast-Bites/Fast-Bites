@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import OverlayModalBackdropLayer from './OverlayModalBackdropLayer';
 
 interface ResendOverlayProps {
   visible: boolean;
@@ -63,13 +64,8 @@ const ResendOverlay: React.FC<ResendOverlayProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
     >
-      {/*
-        Manual tuning — overlay chrome:
-        • Backdrop darkness: bg-black/35 (raise /35 → darker screen)
-        • Backdrop blur: backdrop-blur-[1px] (0 = none, 2px = a bit more)
-      */}
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
-      
+      <OverlayModalBackdropLayer />
+
       {/* Centered content wrapper */}
       <div className="relative z-10 flex flex-col items-center">
         {/* Panel — bg from @theme: overlay-panel-background (see src/constants/colors.ts) */}

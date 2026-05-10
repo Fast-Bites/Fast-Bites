@@ -1,143 +1,169 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Check, CheckCheck, MoreVertical, Search } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
+import SupportMessageBar from '../components/SupportMessageBar';
+import { SUPPORT_AVATAR_SRC } from '../constants/supportUi';
+import { responsivePx } from '../constants/responsive';
 
-interface Message {
+type PreviewKind = 'typing' | 'read' | 'sent' | 'unread';
+
+interface ChatPreview {
   id: string;
-  text: string;
-  isUser: boolean;
+  kind: PreviewKind;
   time: string;
+  /** When set, time label uses primary (e.g. “Yesterday”). */
+  timePrimary?: boolean;
+  preview: string;
+  unreadCount?: number;
+}
+
+const MOCK_CHATS: ChatPreview[] = [
+  {
+    id: '1',
+    kind: 'typing',
+    time: '12:15',
+    preview: 'Typing…'
+  },
+  {
+    id: '2',
+    kind: 'read',
+    time: '12:15',
+    preview: 'Hello, Good evening'
+  },
+  {
+    id: '3',
+    kind: 'sent',
+    time: '12:15',
+    preview: 'Hello, Good evening'
+  },
+  {
+    id: '4',
+    kind: 'unread',
+    time: 'Yesterday',
+    timePrimary: true,
+    preview: 'Hello, Good evening',
+    unreadCount: 1
+  }
+];
+
+function PreviewLine({ row }: { row: ChatPreview }) {
+  if (row.kind === 'typing') {
+    return (
+      <div className="flex w-full min-w-0 flex-col gap-0.5 text-left">
+        <span className="text-xs font-normal text-primary">Typing…</span>
+      </div>
+    );
+  }
+
+  if (row.kind === 'read') {
+    return (
+      <div className="flex w-full min-w-0 items-center gap-1.5">
+        <CheckCheck className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} aria-hidden />
+        <p className="min-w-0 flex-1 truncate text-xs font-normal text-foreground">{row.preview}</p>
+      </div>
+    );
+  }
+
+  if (row.kind === 'sent') {
+    return (
+      <div className="flex w-full min-w-0 items-center gap-1.5">
+        <Check className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+        <p className="min-w-0 flex-1 truncate text-xs font-semibold text-muted-foreground/70">{row.preview}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex w-full min-w-0 items-center gap-1">
+      <p className="min-w-0 flex-1 truncate text-xs font-bold text-foreground">{row.preview}</p>
+    </div>
+  );
 }
 
 const Support = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [query, setQuery] = useState('');
+  const [draft, setDraft] = useState('');
 
-  const today = new Date().toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
-  const handleSend = () => {
-    if (!message.trim()) return;
-    
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: message,
-      isUser: true,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    };
-    
-    setMessages([...messages, newMessage]);
-    setMessage('');
-
-    // Simulate support response
-    setTimeout(() => {
-      const supportResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Thanks for reaching out! We'll get back to you shortly.",
-        isUser: false,
-        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, supportResponse]);
-    }, 1000);
-  };
+  const filtered = MOCK_CHATS.filter((c) =>
+    query.trim() ? c.preview.toLowerCase().includes(query.toLowerCase()) : true
+  );
 
   return (
-    <div className="w-full min-h-screen bg-[#1a1a1a] flex flex-col relative overflow-hidden">
-      {/* Background pattern */}
-      <div 
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `url('/logo/Fast bite transparent I.png')`,
-          backgroundSize: '60px 60px',
-          backgroundRepeat: 'repeat'
-        }}
-      />
-
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div 
-            className="w-12 h-12 rounded-full bg-[#FF6B35] flex items-center justify-center cursor-pointer"
-            onClick={() => navigate(-1)}
+    <div
+      className={`relative flex min-h-screen w-full flex-col bg-background pb-28 font-[var(--font-poppins)] text-foreground`}
+    >
+      <div className={`shrink-0 ${responsivePx} pt-10`}>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-foreground">Support</h1>
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-muted/30"
+            aria-label="More options"
           >
-            <img 
-              src="/logo/Fast bite transparent I.png" 
-              alt="Fast Bites" 
-              className="w-8 h-8 object-contain"
-            />
-          </div>
-          <span className="text-white font-semibold text-lg">Fast Bites Support</span>
+            <MoreVertical className="h-5 w-5" strokeWidth={2} />
+          </button>
         </div>
-        <button className="w-12 h-12 rounded-full bg-[#FF6B35] flex items-center justify-center">
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-          </svg>
-        </button>
+
+        <div className="mt-4 flex items-center gap-2 rounded-full bg-muted/40 px-4 py-3">
+          <Search className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={2} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
       </div>
 
-      {/* Chat area */}
-      <div className="relative z-10 flex flex-1 flex-col overflow-y-auto px-4 pb-48">
-        {/* Date pill */}
-        <div className="flex justify-center my-4">
-          <div className="px-4 py-2 bg-[#2a2a2a] rounded-full">
-            <span className="text-white text-sm">{today}</span>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex flex-col gap-3">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
+      <div className={`flex-1 overflow-y-auto ${responsivePx} pb-36 pt-2`}>
+        <div className="divide-y divide-muted/10">
+          {filtered.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => navigate(`/support/chat/${row.id}`)}
+              className="flex w-full gap-3 py-3 text-left transition-opacity hover:opacity-90 active:opacity-80"
             >
-              <div
-                className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                  msg.isUser
-                    ? 'bg-[#3a3a3a] text-white rounded-br-sm'
-                    : 'bg-[#FF6B35] text-white rounded-bl-sm'
-                }`}
-              >
-                <p className="text-sm">{msg.text}</p>
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-muted/50">
+                <img src={SUPPORT_AVATAR_SRC} alt="" className="h-full w-full object-cover" />
               </div>
-            </div>
+              <div className="min-w-0 flex-1">
+                {/* Title + time: flex so different font sizes share one vertical center line. */}
+                {/* Row 2: grid keeps preview and badge on the same right column as each other. */}
+                <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5">
+                  <div className="col-span-2 flex min-w-0 items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-lg font-bold text-foreground">
+                      Fast Bites support
+                    </span>
+                    <span
+                      className={`shrink-0 text-right text-xs leading-none ${
+                        row.timePrimary ? 'font-normal text-primary' : 'font-normal text-muted-foreground'
+                      }`}
+                    >
+                      {row.time}
+                    </span>
+                  </div>
+                  <div className="col-start-1 min-w-0 self-center">
+                    <PreviewLine row={row} />
+                  </div>
+                  <div className="col-start-2 flex shrink-0 items-center justify-end self-center">
+                    {row.unreadCount != null && row.unreadCount > 0 ? (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-bold leading-none text-primary-foreground tabular-nums">
+                        {row.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Input area */}
-      <div className="fixed bottom-[4.75rem] left-0 right-0 z-40 border-t border-white/5 bg-[#1a1a1a] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center bg-[#2a2a2a] rounded-full px-4 py-3">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Message"
-              className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm"
-            />
-            <button className="text-gray-400 ml-2">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          </div>
-          <button 
-            onClick={handleSend}
-            className="w-12 h-12 rounded-full bg-[#FF6B35] flex items-center justify-center"
-          >
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      <SupportMessageBar draft={draft} onDraftChange={setDraft} position="aboveNav" />
 
       <BottomNav />
     </div>

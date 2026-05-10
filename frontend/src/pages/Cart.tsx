@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageHeader from '../components/PageHeader';
-import BottomNav from '../components/BottomNav';
-import ConfirmDialog from '../components/ConfirmDialog';
+import { Plus, Minus, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
+import BackButton from '../components/BackButton';
+import Button from '../components/Button';
+import OverlayChoiceModal from '../components/OverlayChoiceModal';
 import { responsivePx } from '../constants/responsive';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -54,6 +55,7 @@ const Cart: React.FC = () => {
   const [expandedRestaurant, setExpandedRestaurant] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ restaurantId: string; itemId: string } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   /* helpers */
   const orderTotal = (items: CartItem[]) => items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -90,142 +92,234 @@ const Cart: React.FC = () => {
     setExpandedRestaurant(null);
   };
 
-  /* ── Detail view for a single restaurant ─────────── */
-  if (expandedRestaurant) {
-    const restaurant = orders.find((r) => r.id === expandedRestaurant);
-    if (!restaurant) {
-      setExpandedRestaurant(null);
-      return null;
-    }
+  const detailRestaurant =
+    expandedRestaurant != null ? orders.find((r) => r.id === expandedRestaurant) ?? null : null;
 
-    const mainItems = restaurant.items.filter((i) => i.section === 'main');
-    const extraItems = restaurant.items.filter((i) => i.section === 'extras');
+  const toggleExpand = (id: string) =>
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
 
-    const renderSection = (label: string, items: CartItem[]) => (
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-foreground font-semibold text-base">{label}:</h3>
-        </div>
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 bg-overlay-panel-background rounded-xl p-3 mb-2">
-            <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+  /** True when this line item represents multiple separate servings (name ends with " (+N)"). */
+  const itemHasMultiServingBreakdown = (name: string) => /\s*\(\+\d+\)$/.test(name);
+
+  /** Splits trailing " (+N)" so the suffix can use primary pill styling (e.g. extra servings). */
+  const renderItemName = (name: string) => {
+    const match = name.match(/^(.*?)(\s*\(\+\d+\))$/);
+    if (!match) return name;
+    const [, base, suffixWithSpace] = match;
+    const suffix = suffixWithSpace.trim();
+    return (
+      <>
+        {base}
+        <span className="ml-1 inline-block align-middle text-lg font-semibold text-primary">
+          {suffix}
+        </span>
+      </>
+    );
+  };
+
+  // Demo breakdown data — would come from item customization in real data
+  const getBreakdown = () => ({
+    sauce: { name: 'Stew', price: 800 },
+    secondServing: {
+      main: { name: 'Rice', price: 1500 },
+      sauce: { name: 'Cabbage sauce', price: 1200 },
+      extras: [
+        { name: 'Fried plantains', price: 700 },
+        { name: 'Boiled egg', price: 100 },
+        { name: 'Pepper meat', price: 1000 },
+        { name: 'Snail', price: 850 },
+        { name: 'Gizzard', price: 900 },
+      ],
+    },
+  });
+
+  const renderItemCard = (restaurant: RestaurantOrder, item: CartItem) => {
+    const hasBreakdown = itemHasMultiServingBreakdown(item.name);
+    const isOpen = hasBreakdown && !!expandedItems[item.id];
+    const breakdown = hasBreakdown ? getBreakdown() : null;
+
+    return (
+      <div
+        key={item.id}
+        className={`mb-4 rounded-xl bg-overlay-panel-background ${
+          hasBreakdown && isOpen ? 'relative z-30 shadow-2xl' : ''
+        } ${hasBreakdown ? '' : 'overflow-hidden'}`}
+      >
+        <div className={hasBreakdown ? 'overflow-hidden rounded-t-xl' : ''}>
+          <div className="flex items-stretch gap-3 p-2">
+            <div className="h-26 w-26 flex-shrink-0 overflow-hidden rounded-lg">
+              <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <h4 className="text-foreground font-medium text-sm truncate">{item.name}</h4>
-                <button onClick={() => setDeleteTarget({ restaurantId: restaurant.id, itemId: item.id })}>
-                  <img src="/assets/delete.svg" alt="Delete" className="w-4 h-4 opacity-60" />
-                </button>
-              </div>
-              <p className="text-muted-foreground text-xs truncate">{item.description}</p>
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-primary font-bold text-sm">₦{(item.price * item.quantity).toLocaleString()}</span>
-                <div className="flex items-center gap-3">
+            <div className="flex flex-1 min-w-0 flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-foreground font-semibold text-lg leading-tight">
+                  {renderItemName(item.name)}
+                </h4>
+                {hasBreakdown && isOpen ? (
+                  <span aria-hidden className="text-foreground/80 pt-1">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </span>
+                ) : (
                   <button
-                    onClick={() => updateQuantity(restaurant.id, item.id, -1)}
-                    className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm"
+                    type="button"
+                    onClick={() => setDeleteTarget({ restaurantId: restaurant.id, itemId: item.id })}
+                    aria-label="Delete item"
+                    className="text-foreground hover:text-foreground"
                   >
-                    −
+                    <img src="/assets/delete-white-2.png" alt="" className="h-5 w-5 object-contain" />
                   </button>
-                  <span className="text-foreground text-sm font-medium w-4 text-center">{item.quantity}</span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+              <p className="mt-1 text-primary font-regular text-lg">₦{item.price.toLocaleString()}</p>
+              <div className="mt-auto flex items-center justify-end gap-1 pt-0">
+                <div className="flex bg-black rounded-full items-center">
                   <button
-                    onClick={() => updateQuantity(restaurant.id, item.id, 1)}
-                    className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm"
+                    type="button"
+                    onClick={() => updateQuantity(restaurant.id, item.id, -1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white"
+                    aria-label="Decrease quantity"
                   >
-                    +
+                    <Minus className="h-4 w-4 text-black" strokeWidth={2.5} />
+                  </button>
+                  <span className="w-6 text-center text-sm font-medium text-foreground">{item.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => updateQuantity(restaurant.id, item.id, 1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-primary"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="h-4 w-4 text-white" strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        ))}
-        <div className="flex items-center justify-between mt-1 px-1">
-          <span className="text-muted-foreground text-xs">{itemCount(items)} Items</span>
-          <span className="text-foreground font-bold text-sm">₦{orderTotal(items).toLocaleString()}</span>
+
+          {hasBreakdown && isOpen && breakdown && (
+            <div className="px-4 py-6 space-y-4 border-t-3 border-t-black/40">
+              <div>
+                <p className="text-xs text-muted-foreground/70">Sauce:</p>
+                <div className="flex items-center justify-between border-b border-white/40 pb-1">
+                  <span className="text-foreground text-base">{breakdown.sauce.name}</span>
+                  <span className="text-foreground text-base">₦{breakdown.sauce.price.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-6">
+                <h5 className="text-foreground text-xl">Second serving</h5>
+                <div>
+                  <p className="text-xs text-muted-foreground/70">Main:</p>
+                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
+                    <span className="text-foreground text-base">{breakdown.secondServing.main.name}</span>
+                    <span className="text-foreground text-base">₦{breakdown.secondServing.main.price.toLocaleString()}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground/70">Sauce:</p>
+                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
+                    <span className="text-foreground text-base">{breakdown.secondServing.sauce.name}</span>
+                    <span className="text-foreground text-base">₦{breakdown.secondServing.sauce.price.toLocaleString()}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground/70 mb-1">Extras:</p>
+                  <div className="space-y-1.5">
+                    {breakdown.secondServing.extras.map((ex) => (
+                      <div key={ex.name} className="flex items-center justify-between">
+                        <span className="text-foreground text-base">{ex.name}</span>
+                        <span className="text-foreground text-base">₦{ex.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    );
 
-    return (
-      <div className="w-full min-h-screen bg-background font-[var(--font-poppins)]">
-        <PageHeader title={restaurant.name} onBack={() => setExpandedRestaurant(null)} />
-        <div className="h-20" />
-
-        <div className={`${responsivePx} pb-28`}>
-          {mainItems.length > 0 && renderSection('Main', mainItems)}
-          {extraItems.length > 0 && renderSection('Extras', extraItems)}
-
-          {/* Proceed button */}
+        {hasBreakdown && (
           <button
-            onClick={() => navigate('/order')}
-            className="w-full mt-6 py-4 rounded-full bg-app-green text-background font-semibold text-lg transition-opacity hover:opacity-90 active:opacity-80"
+            type="button"
+            onClick={() => toggleExpand(item.id)}
+            className={`flex w-full items-center justify-center gap-2 text-xs py-1.5 rounded-b-xl bg-primary text-primary-foreground`}
           >
-            Proceed to order
+            {isOpen ? 'See less' : 'See more'}
+            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
-        </div>
-
-        <ConfirmDialog
-          visible={!!deleteTarget}
-          title="Delete item?"
-          message="Are you sure you want to remove this item from your cart?"
-          confirmLabel="Delete"
-          cancelLabel="Keep"
-          confirmVariant="danger"
-          onConfirm={deleteItem}
-          onCancel={() => setDeleteTarget(null)}
-        />
-        <BottomNav />
+        )}
       </div>
     );
-  }
+  };
 
-  /* ── List view (all restaurants) ─────────────────── */
+  const anyServingDropdownOpen =
+    detailRestaurant != null &&
+    detailRestaurant.items.some(
+      (item) => itemHasMultiServingBreakdown(item.name) && expandedItems[item.id],
+    );
+
   return (
-    <div className="w-full min-h-screen bg-background font-[var(--font-poppins)]">
-      <PageHeader title="Cart" />
+    <div className="relative w-full min-h-screen bg-background font-[var(--font-poppins)]">
+      <div className={`absolute top-0 left-0 right-0 z-[50] ${responsivePx} pt-10`}>
+        <BackButton
+          variant="map"
+          title="Cart"
+          {...(detailRestaurant ? { onBack: () => setExpandedRestaurant(null) } : {})}
+        />
+      </div>
       <div className="h-20" />
 
-      <div className={`${responsivePx} pb-28`}>
-        {orders.length === 0 ? (
-          <div className="text-center text-muted-foreground py-16">Your cart is empty</div>
+      <div
+        className={`${responsivePx} mt-6 ${
+          detailRestaurant && !anyServingDropdownOpen
+            ? 'pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]'
+            : 'pb-10'
+        }`}
+      >
+        {detailRestaurant ? (
+          <>
+            <p className="mb-5 border-b border-primary-foreground/30 pb-1 text-sm text-muted-foreground">
+              {detailRestaurant.name}
+            </p>
+            {detailRestaurant.items.map((item) => renderItemCard(detailRestaurant, item))}
+          </>
+        ) : orders.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground">Your cart is empty</div>
         ) : (
           orders.map((restaurant) => (
-            <div key={restaurant.id} className="bg-overlay-panel-background rounded-2xl p-4 mb-4">
-              {/* Restaurant header row */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                  <img src={restaurant.logo} alt={restaurant.name} className="w-full h-full object-cover" />
+            <div key={restaurant.id} className="mb-4 rounded-xl bg-overlay-panel-background px-2 py-5">
+              <div className="mb-6 flex w-full min-w-0 items-center gap-3">
+                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
+                  <img src={restaurant.logo} alt={restaurant.name} className="h-full w-full object-cover" />
                 </div>
-                <h2 className="text-foreground font-semibold text-base flex-1">{restaurant.name}</h2>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+                      {restaurant.name}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRestaurant(restaurant.id)}
+                      className="flex-shrink-0 text-xs text-white underline"
+                    >
+                      Show items
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {itemCount(restaurant.items)} Items | ₦{orderTotal(restaurant.items).toLocaleString()}
+                  </p>
+                </div>
               </div>
-
-              {/* Show items toggle */}
-              <button
-                onClick={() => setExpandedRestaurant(restaurant.id)}
-                className="flex items-center gap-2 mb-3 text-primary text-sm font-medium"
-              >
-                <span>Show items</span>
-                <img src="/assets/Back.svg" alt="" className="w-3 h-3 rotate-180" />
-              </button>
-
-              {/* Summary */}
-              <div className="flex items-center justify-between text-sm mb-4">
-                <span className="text-muted-foreground">{itemCount(restaurant.items)} Items</span>
-                <span className="text-foreground font-bold">₦{orderTotal(restaurant.items).toLocaleString()}</span>
-              </div>
-
-              {/* Action buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => navigate('/order')}
-                  className="flex-1 py-3 rounded-full bg-app-green text-background font-semibold text-sm transition-opacity hover:opacity-90"
+                  onClick={() => navigate('/orders')}
+                  className="flex-1 rounded-xl bg-popup-green py-3 text-sm text-black transition-opacity hover:opacity-90"
                 >
                   Checkout
                 </button>
                 <button
                   onClick={() => setRemoveTarget(restaurant.id)}
-                  className="flex-1 py-3 rounded-full border-2 border-primary text-primary font-semibold text-sm transition-opacity hover:opacity-80"
+                  className="flex-1 rounded-xl border-2 border-primary py-3 text-sm text-primary transition-opacity hover:opacity-80"
                 >
                   Remove
                 </button>
@@ -233,25 +327,38 @@ const Cart: React.FC = () => {
             </div>
           ))
         )}
-
-        {orders.length > 1 && (
-          <button className="w-full text-center text-primary text-sm font-medium py-2">
-            See more
-          </button>
-        )}
       </div>
 
-      <ConfirmDialog
-        visible={!!removeTarget}
-        title="Remove order?"
-        message="All items from this restaurant will be removed from your cart."
-        confirmLabel="Remove"
-        cancelLabel="Keep"
-        confirmVariant="danger"
-        onConfirm={removeRestaurant}
-        onCancel={() => setRemoveTarget(null)}
+      {/* Proceed to order — hidden while a multi-serving breakdown dropdown is open */}
+      {detailRestaurant && !anyServingDropdownOpen && (
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-overlay-panel-background ${responsivePx} pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]`}
+        >
+          <Button onClick={() => navigate('/orders')} variant="primary">
+            Proceed to order
+          </Button>
+        </div>
+      )}
+
+      <OverlayChoiceModal
+        open={!!deleteTarget}
+        onBackdropClick={() => setDeleteTarget(null)}
+        title="Delete item?"
+        actions={[
+          { label: 'Yes', variant: 'green', onClick: deleteItem },
+          { label: 'No', variant: 'primary', onClick: () => setDeleteTarget(null) },
+        ]}
       />
-      <BottomNav />
+
+      <OverlayChoiceModal
+        open={removeTarget !== null}
+        onBackdropClick={() => setRemoveTarget(null)}
+        title="Remove order?"
+        actions={[
+          { label: 'Yes', variant: 'green', onClick: removeRestaurant },
+          { label: 'No', variant: 'primary', onClick: () => setRemoveTarget(null) },
+        ]}
+      />
     </div>
   );
 };

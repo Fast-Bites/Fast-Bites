@@ -3,6 +3,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { responsivePx } from '../constants/responsive';
 import Button from '../components/Button';
 import BackButton from '../components/BackButton';
+import OverlayChoiceModal from '../components/OverlayChoiceModal';
 
 
 interface MealData {
@@ -231,7 +232,7 @@ const MealDetails: React.FC = () => {
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.sauce ? 'font-medium text-app-green' : 'text-muted-foreground'}`}>
+          <p className={`mt-1 text-right text-xs ${serving.sauce ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
             Cost: ₦{saucePrice.toLocaleString()}
           </p>
         </div>
@@ -279,7 +280,7 @@ const MealDetails: React.FC = () => {
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.extras ? 'font-medium text-app-green' : 'text-muted-foreground'}`}>
+          <p className={`mt-1 text-right text-xs ${serving.extras ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
             Cost: ₦{extrasPrice.toLocaleString()}
           </p>
         </div>
@@ -466,34 +467,15 @@ const MealDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Delete confirmation overlay */}
-      {deleteTargetIdx !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setDeleteTargetIdx(null)}>
-          <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
-          <div
-            className="relative z-10 flex flex-col items-center gap-4 rounded-xl border border-white/15 bg-overlay-panel-background px-5 py-4 shadow-lg backdrop-blur-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-foreground text-base font-medium">Delete serving?</p>
-            <div className="flex w-full min-w-[200px] gap-12">
-              <button
-                type="button"
-                onClick={confirmDeleteServing}
-                className="flex-1 rounded-md bg-app-green py-2 text-center text-sm font-semibold text-black transition-opacity hover:opacity-80"
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteTargetIdx(null)}
-                className="flex-1 rounded-md bg-primary py-2 text-center text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-80"
-              >
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OverlayChoiceModal
+        open={deleteTargetIdx !== null}
+        onBackdropClick={() => setDeleteTargetIdx(null)}
+        title="Delete serving?"
+        actions={[
+          { label: 'Yes', variant: 'green', onClick: confirmDeleteServing },
+          { label: 'No', variant: 'primary', onClick: () => setDeleteTargetIdx(null) },
+        ]}
+      />
     </div>
   );
 };

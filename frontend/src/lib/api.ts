@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { prepareAuthPersistence, supabase } from './supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8004";
 
@@ -55,7 +55,8 @@ const simplifyPasswordError = (errorMessage: string): string => {
 
 // Auth - using Supabase
 export const auth = {
-  signup: async (email: string, password: string) => {
+  signup: async (email: string, password: string, rememberMe = true) => {
+    prepareAuthPersistence(rememberMe);
     const { data, error } = await supabase.auth.signUp({ 
       email, 
       password,
@@ -78,7 +79,8 @@ export const auth = {
     return { data };
   },
 
-  signin: async (email: string, password: string) => {
+  signin: async (email: string, password: string, rememberMe = true) => {
+    prepareAuthPersistence(rememberMe);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     return { data };

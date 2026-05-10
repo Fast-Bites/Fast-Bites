@@ -5,6 +5,8 @@ interface BackButtonProps {
   variant?: 'default' | 'map';
   /** Additional className on the back button only */
   className?: string;
+  /** If provided, runs instead of navigating back or to `to` */
+  onBack?: () => void;
   /** If provided, navigate to this path instead of history back */
   to?: string;
   /**
@@ -21,13 +23,21 @@ interface BackButtonProps {
 const BackButton: React.FC<BackButtonProps> = ({
   variant = 'default',
   className = '',
+  onBack,
   to,
   title,
   titleClassName = '',
   rowClassName = '',
 }) => {
   const navigate = useNavigate();
-  const handleClick = () => (to ? navigate(to) : navigate(-1));
+  const handleClick = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (to) navigate(to);
+    else navigate(-1);
+  };
 
   const mapButton = (
     <button

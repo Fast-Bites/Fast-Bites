@@ -1,152 +1,138 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import api from '../lib/api';
 import BottomNav from '../components/BottomNav';
+import { responsivePx } from '../constants/responsive';
+import { PROFILE_AVATAR_IMAGE } from '../constants/profileAvatar';
+import { WALLET_TRANSACTIONS, WALLET_TX_ICON_DOWN } from '../constants/walletTransactions';
+import WalletTransactionRow from '../components/WalletTransactionRow';
+import WalletDepositFromPanel from '../components/WalletDepositFromPanel';
+import OverlayModalBackdropLayer from '../components/OverlayModalBackdropLayer';
 
 interface UserProfile {
   first_name?: string;
   last_name?: string;
-}
-
-interface Transaction {
-  id: string;
-  type: 'deposit' | 'sent' | 'received';
-  description: string;
-  amount: number;
-  date: string;
-  time: string;
-  isPositive: boolean;
+  /** If API returns a custom photo, use it; otherwise same default as Home. */
+  profile_image?: string;
 }
 
 const Wallet: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
-
-  // Dummy data
+  const [depositExpanded, setDepositExpanded] = useState(false);
   const balance = 23600;
-  const transactions: Transaction[] = [
-    { id: '1', type: 'deposit', description: 'Deposited from access bank account', amount: 5600, date: '12 June, 2023', time: '10:00AM', isPositive: true },
-    { id: '2', type: 'sent', description: 'Sent for rice and stew order', amount: 2000, date: '12 June, 2023', time: '10:00AM', isPositive: false },
-    { id: '3', type: 'received', description: 'Received from order refund', amount: 2000, date: '12 June, 2023', time: '10:00AM', isPositive: true },
-    { id: '4', type: 'deposit', description: 'Deposited from access bank account', amount: 18000, date: '12 June, 2023', time: '10:00AM', isPositive: true },
-    { id: '5', type: 'deposit', description: 'Deposited from access bank account', amount: 18000, date: '12 June, 2023', time: '10:00AM', isPositive: true },
-  ];
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data } = await api.getProfile();
-      if (data) {
-        setUser(data as UserProfile);
-      }
-    };
-    fetchProfile();
+    api.getProfile().then(({ data }) => {
+      if (data) setUser(data as UserProfile);
+    });
   }, []);
 
+  const fullName = user
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'John Doe'
+    : 'John Doe';
+
   return (
-    <div className="w-full min-h-screen bg-[#1a1a1a] font-[var(--font-poppins)]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-12 pb-6">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center">
-          <img src="/assets/Back.svg" alt="Back" className="w-6 h-6" />
-        </button>
-        <h1 className="text-white text-xl font-semibold">Wallet</h1>
-        <div className="w-10 h-10" /> {/* Spacer for centering */}
-      </div>
+    <div className="relative flex min-h-screen w-full flex-col bg-background pb-28 font-[var(--font-poppins)]">
+      {/* Orange wallet background — covers ~3/5 */}
+      <div
+        className="absolute inset-x-0 top-0 h-[60vh] bg-cover bg-center"
+        style={{ backgroundImage: "url('/assets/cart Background.png')" }}
+        aria-hidden
+      />
 
-      {/* User greeting and avatar */}
-      <div className="flex items-center gap-3 px-5 mb-6">
-        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/20">
-          <img 
-            src="/assets/user 1 1-home.png" 
-            alt="User" 
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div>
-          <p className="text-white/70 text-sm">Welcome,</p>
-          <h2 className="text-white font-semibold text-lg">
-            {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'John Doe' : 'John Doe'}
-          </h2>
-        </div>
-      </div>
-
-      {/* Balance Card */}
-      <div className="mx-5 mb-5 bg-white rounded-3xl p-6">
-        <p className="text-gray-500 text-sm mb-1">Your balance</p>
-        <div className="flex items-baseline gap-1 mb-6">
-          <span className="text-[#1a1a1a] text-4xl font-bold">₦</span>
-          <span className="text-[#1a1a1a] text-4xl font-bold">{balance.toLocaleString()}</span>
-        </div>
-        
-        {/* Deposit Button */}
-        <button 
-          onClick={() => navigate('/deposit')}
-          className="w-full bg-[#FF6B35] hover:bg-[#e55a2a] transition-colors rounded-full py-4 flex items-center justify-center gap-3 mb-4"
-        >
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+      <div
+        className={`relative shrink-0 ${responsivePx} pt-10${depositExpanded ? ' z-40' : ''}`}
+      >
+        {/* User greeting */}
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 overflow-hidden rounded-full border border-foreground/30">
+            <img
+              src={user?.profile_image || PROFILE_AVATAR_IMAGE}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           </div>
-          <span className="text-white font-semibold text-lg">Deposit</span>
-        </button>
-
-        {/* Add new card */}
-        <button 
-          onClick={() => navigate('/deposit')}
-          className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-gray-300 transition-colors"
-        >
-          <div className="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
-            <span className="text-gray-400 text-xs leading-none">+</span>
+          <div className="leading-tight">
+            <p className="text-xs text-foreground/80">Welcome,</p>
+            <h2 className="text-base font-semibold text-foreground">{fullName}</h2>
           </div>
-          <span className="text-sm">Add new card</span>
-        </button>
-      </div>
-
-      {/* Transactions Section */}
-      <div className="px-5 pb-28">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold text-lg">Transactions</h3>
-          <button className="text-[#FF6B35] text-sm font-medium">See all</button>
         </div>
 
-        {/* Transaction List */}
-        <div className="space-y-3">
-          {transactions.map((transaction) => (
-            <div 
-              key={transaction.id}
-              className="bg-[#2a2a2a] rounded-2xl p-4 flex items-center gap-3"
-            >
-              {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
-                {transaction.type === 'deposit' ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 21H21M5 21V7L12 3L19 7V21M9 21V13H15V21M9 9H9.01M15 9H15.01" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : transaction.type === 'sent' ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 5V19M12 19L19 12M12 19L5 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </div>
+        {/* Balance */}
+        <div className="mt-14 flex flex-col items-center">
+          <p className="text-xs text-foreground/80">Your balance</p>
+          <p className="mt-1 text-4xl font-semibold text-foreground">
+            ₦{balance.toLocaleString()}
+          </p>
+        </div>
 
-              {/* Details */}
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-medium text-sm truncate">{transaction.description}</p>
-                <p className="text-gray-500 text-xs">{transaction.date} | {transaction.time}</p>
-              </div>
-
-              {/* Amount */}
-              <div className="flex-shrink-0">
-                <span className={`font-bold text-base ${transaction.isPositive ? 'text-app-green' : 'text-[#EF4444]'}`}>
-                  {transaction.isPositive ? '+' : '-'}₦{transaction.amount.toLocaleString()}
+        {/* Deposit — expanded panel is absolute so flow below does not shift */}
+        <div className="relative">
+          <div className="relative mt-12 h-12 w-full">
+            {!depositExpanded ? (
+              <button
+                type="button"
+                onClick={() => setDepositExpanded(true)}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-background"
+              >
+                <span className="absolute left-1 flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+                  <img src={WALLET_TX_ICON_DOWN} alt="" className="h-7 w-7 object-contain" />
                 </span>
+                <span className="text-lg text-primary">Deposit</span>
+              </button>
+            ) : (
+              <div className="absolute left-0 right-0 top-0">
+                <WalletDepositFromPanel
+                  onClose={() => setDepositExpanded(false)}
+                  onSelectMethod={(method) => {
+                    setDepositExpanded(false);
+                    navigate('/deposit', { state: { depositMethod: method } });
+                  }}
+                />
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Add new card — keep layout space when expanded so nothing below moves */}
+          <button
+            type="button"
+            onClick={() => navigate('/wallet/add-card')}
+            className={`mx-auto mt-6 flex items-center gap-2 text-xs text-foreground/80 ${depositExpanded ? 'pointer-events-none invisible' : ''}`}
+          >
+            <span className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-foreground">
+              <Plus className="h-3 w-3 text-foreground" strokeWidth={3} />
+            </span>
+            <span>Add new card</span>
+          </button>
+        </div>
+      </div>
+
+      {depositExpanded && (
+        <div className="pointer-events-auto fixed inset-0 z-[35]" aria-hidden role="presentation">
+          <OverlayModalBackdropLayer />
+        </div>
+      )}
+
+      {/* Transactions panel — flex-1 so #111111 fills viewport below the cards */}
+      <div
+        className={`relative mt-8 flex flex-1 flex-col rounded-t-3xl bg-[#111111] ${responsivePx} pt-6 pb-6`}
+      >
+        <div className="mb-6 flex shrink-0 items-center justify-between">
+          <h3 className="text-xs text-foreground/90">Transactions</h3>
+          <button
+            type="button"
+            onClick={() => navigate('/wallet/transactions')}
+            className="text-xs text-foreground/90"
+          >
+            See all
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {WALLET_TRANSACTIONS.map((tx) => (
+            <WalletTransactionRow key={tx.id} tx={tx} variant="card" />
           ))}
         </div>
       </div>

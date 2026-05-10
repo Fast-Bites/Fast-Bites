@@ -158,11 +158,11 @@ const RestaurantProfile = () => {
                   </span>
                   <span
                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                      isOpen ? 'bg-app-green' : 'bg-red-500'
+                      isOpen ? 'bg-popup-green' : 'bg-red-500'
                     }`}
                   />
                   <span
-                    className={`shrink-0 font-medium ${isOpen ? 'text-app-green' : 'text-red-500'}`}
+                    className={`shrink-0 font-medium ${isOpen ? 'text-popup-green' : 'text-red-500'}`}
                   >
                     {isOpen ? 'Open' : 'Closed'}
                   </span>

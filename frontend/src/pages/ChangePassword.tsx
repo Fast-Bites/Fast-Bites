@@ -126,7 +126,7 @@ const ChangePassword: React.FC = () => {
           <p className="text-red-500 text-xs mb-2">Passwords do not match</p>
         )}
         {doPasswordsMatch && (
-          <p className="text-app-green text-xs mb-2">Passwords match ✓</p>
+          <p className="text-popup-green text-xs mb-2">Passwords match ✓</p>
         )}
 
         {/* Error Message */}

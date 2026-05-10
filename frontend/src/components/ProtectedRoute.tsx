@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/api';
+import FullScreenLogoLoader from './FullScreenLogoLoader';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -32,15 +33,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   // Loading state - checking authentication
   if (status === 'checking') {
-    return (
-      <div className="w-full min-h-screen bg-black flex flex-col items-center justify-center">
-        <img 
-          src="/logo/Fast bite transparent I.png" 
-          alt="Fast Bites" 
-          className="w-1/2 h-1/2 object-contain animate-zoom-pulse"
-        />
-      </div>
-    );
+    return <FullScreenLogoLoader />;
   }
 
   // Not authenticated - show message before redirect

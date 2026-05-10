@@ -4,15 +4,17 @@ import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import { auth } from '../lib/api';
+import { getRememberMeCheckboxPreference, persistRememberMeCheckboxPreference } from '../lib/supabase';
 
 const SignUpForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => getRememberMeCheckboxPreference() ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSignInLink, setShowSignInLink] = useState(false);
 
   const isPasswordValid = password.length >= 6;
 
@@ -22,18 +24,24 @@ const SignUpForm: React.FC = () => {
 
     setLoading(true);
     setError('');
+    setShowSignInLink(false);
 
     // Sign up with Supabase Auth
-    const { data, error: authError } = await auth.signup(email, password);
+    const { data, error: authError } = await auth.signup(email, password, rememberMe);
 
     console.log('Signup response:', { data, authError }); // Debug
 
     setLoading(false);
 
     if (authError) {
-      // If user already exists, show sign in option
-      if (authError.includes('already registered') || authError.includes('already exists')) {
+      const lower = authError.toLowerCase();
+      if (
+        lower.includes('already registered') ||
+        lower.includes('already exists') ||
+        lower.includes('user already')
+      ) {
         setError('This email is already registered. Please sign in instead.');
+        setShowSignInLink(true);
         return;
       }
       setError(authError);
@@ -44,19 +52,22 @@ const SignUpForm: React.FC = () => {
       // Check if email already exists (Supabase returns user with empty identities)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
         setError('This email is already registered. Please sign in instead.');
+        setShowSignInLink(true);
         return;
       }
-      
+
+      persistRememberMeCheckboxPreference(rememberMe);
+
       // Store email for verification/profile steps
       sessionStorage.setItem('signup_email', email);
-      
+
       // Check if email confirmation is required
       if (data.user && !data.session) {
         // Navigate to email sent page
         navigate('/email-sent');
         return;
       }
-      
+
       // No confirmation needed - go straight to profile
       navigate('/signup-form-2');
     }
@@ -115,7 +126,18 @@ const SignUpForm: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <p className="text-red-500 text-xs mb-4">{error}</p>
+          <div className="mb-4">
+            <p className="text-xs text-red-500">{error}</p>
+            {showSignInLink && (
+              <button
+                type="button"
+                onClick={() => navigate('/signin-form')}
+                className="mt-1 text-xs text-primary underline"
+              >
+                Sign in →
+              </button>
+            )}
+          </div>
         )}
 
         {/* Remember Me Checkbox */}

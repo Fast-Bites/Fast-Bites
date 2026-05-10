@@ -4,13 +4,14 @@ import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import { auth, api } from '../lib/api';
+import { getRememberMeCheckboxPreference, persistRememberMeCheckboxPreference } from '../lib/supabase';
 
 const SignInForm: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => getRememberMeCheckboxPreference() ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showRegisterLink, setShowRegisterLink] = useState(false);
@@ -25,7 +26,7 @@ const SignInForm: React.FC = () => {
     setShowRegisterLink(false);
     setShowVerifyLink(false);
 
-    const { data, error: authError } = await auth.signin(email, password);
+    const { data, error: authError } = await auth.signin(email, password, rememberMe);
 
     setLoading(false);
 
@@ -47,6 +48,7 @@ const SignInForm: React.FC = () => {
     }
 
     if (data) {
+      persistRememberMeCheckboxPreference(rememberMe);
       // Wait a moment for session to be fully established
       await new Promise(resolve => setTimeout(resolve, 100));
       

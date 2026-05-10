@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../lib/api';
+import api, { auth } from '../lib/api';
 import type { MenuItemWithRestaurant } from '../lib/api';
 import { formatDeliveryTime } from '../lib/formatDeliveryTime';
 import { responsivePx, responsivePt } from '../constants/responsive';
+import { PROFILE_AVATAR_IMAGE } from '../constants/profileAvatar';
 import SearchBar from '../components/SearchBar';
 import BottomNav from '../components/BottomNav';
 import MenuOverlay from '../components/MenuOverlay';
+import OverlayChoiceModal from '../components/OverlayChoiceModal';
+import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
 
 interface UserProfile {
   first_name?: string;
@@ -22,9 +25,6 @@ interface MealDisplay {
   price: string;
   image: string;
 }
-
-/** Same avatar as header + menu overlay profile row */
-const PROFILE_AVATAR_IMAGE = '/assets/stefan-stefancik-QXevDflbl8A-unsplash 1.png';
 
 // Placeholder images for meals without images - randomly assigned
 const PLACEHOLDER_IMAGES = [
@@ -44,6 +44,9 @@ const Home: React.FC = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
   const cartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountErr, setDeleteAccountErr] = useState<string | null>(null);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,6 +109,32 @@ const Home: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  const closeDeleteAccountModal = () => {
+    setDeleteAccountOpen(false);
+    setDeleteAccountErr(null);
+  };
+
+  const confirmDeleteAccount = async () => {
+    setDeleteAccountErr(null);
+    setDeleteAccountOpen(false);
+    setDeleteAccountBusy(true);
+    try {
+      const { error } = await api.deleteProfile();
+      if (error) {
+        setDeleteAccountBusy(false);
+        setDeleteAccountErr(error);
+        setDeleteAccountOpen(true);
+        return;
+      }
+      await auth.signout();
+      navigate('/role-selection', { replace: true });
+    } catch {
+      setDeleteAccountBusy(false);
+      setDeleteAccountErr('Something went wrong. Please try again.');
+      setDeleteAccountOpen(true);
+    }
   };
 
   return (
@@ -281,7 +310,39 @@ const Home: React.FC = () => {
         onClose={() => setMenuOpen(false)}
         user={user}
         profileImageSrc={PROFILE_AVATAR_IMAGE}
+        onDeleteAccount={() => setDeleteAccountOpen(true)}
       />
+
+      {deleteAccountBusy ? (
+        <FullScreenLogoLoader
+          overlay
+          message="Please wait a few seconds. Your profile is being deleted."
+        />
+      ) : null}
+
+      <OverlayChoiceModal
+        open={deleteAccountOpen}
+        onBackdropClick={closeDeleteAccountModal}
+        title="Delete your account?"
+        message={
+          <>
+            <p>
+              This is permanent and cannot be undone. Your profile, preferences, and data we store for your account
+              will be removed.
+            </p>
+            {deleteAccountErr ? (
+              <p className="mt-2 text-red-400" role="alert">
+                {deleteAccountErr}
+              </p>
+            ) : null}
+          </>
+        }
+        actions={[
+          { label: 'Yes', variant: 'green', onClick: confirmDeleteAccount },
+          { label: 'No', variant: 'primary', onClick: closeDeleteAccountModal },
+        ]}
+      />
+
       <BottomNav />
     </div>
   );
