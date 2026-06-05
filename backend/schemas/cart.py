@@ -11,6 +11,7 @@ class CartItemResponse(BaseModel):
     image: Optional[str] = None
     section: Optional[str] = None
     menu_item_id: Optional[str] = None
+    options_json: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RestaurantCartGroup(BaseModel):

@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
 
 class OrderTabItemResponse(BaseModel):
@@ -10,6 +10,7 @@ class OrderTabItemResponse(BaseModel):
     quantity: int
     image: Optional[str] = None
     restaurant: str
+    options_json: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TrackingStepResponse(BaseModel):

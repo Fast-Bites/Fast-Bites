@@ -77,6 +77,7 @@ async def order_summary(
                             quantity=int(oi.quantity or 1),
                             image=oi.image_url,
                             restaurant=rest_name,
+                            options_json=oi.options_json or {},
                         )
                     )
                 if order.delivery_fee is not None:

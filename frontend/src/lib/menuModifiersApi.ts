@@ -86,8 +86,12 @@ export function buildOptionsJson(
   servings: Array<{ sauceId: string; sauceLabel: string; extrasId: string; extrasLabel: string }>,
   saucePrices: Record<string, number>,
   extrasPrices: Record<string, number>,
+  basePrice: number,
+  mealName: string,
 ): Record<string, unknown> {
   return {
+    base_price: basePrice,
+    meal_name: mealName,
     servings: servings.map((s) => ({
       sauce: s.sauceLabel || null,
       sauce_id: s.sauceId || null,
@@ -97,4 +101,9 @@ export function buildOptionsJson(
       extras_price: s.extrasId ? extrasPrices[s.extrasId] ?? 0 : 0,
     })),
   };
+}
+
+export function cartItemNameForServings(mealName: string, servingCount: number): string {
+  if (servingCount <= 1) return mealName;
+  return `${mealName} (+${servingCount - 1})`;
 }

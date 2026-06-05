@@ -33,6 +33,7 @@ def item_to_response(row: CartItem) -> CartItemResponse:
         image=row.image_url,
         section=row.section,
         menu_item_id=str(row.menu_item_id) if row.menu_item_id else None,
+        options_json=row.options_json or {},
     )
 
 

@@ -9,6 +9,7 @@ export interface CartItemDto {
   image?: string;
   section?: 'main' | 'extras';
   menu_item_id?: string;
+  options_json?: Record<string, unknown>;
 }
 
 export interface RestaurantCartDto {

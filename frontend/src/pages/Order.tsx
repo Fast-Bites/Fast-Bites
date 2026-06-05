@@ -5,7 +5,9 @@ import { ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import OverlayChoiceModal from '../components/OverlayChoiceModal';
+import ServingBreakdownPanel, { ItemNameWithServingSuffix } from '../components/ServingBreakdownPanel';
 import TabSwitcher from '../components/TabSwitcher';
+import { hasMultiServingBreakdown, parseMultiServingBreakdown } from '../lib/servingBreakdown';
 import { responsivePx } from '../constants/responsive';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -80,55 +82,25 @@ const Order: React.FC = () => {
   const toggleExpand = (id: string) =>
     setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const itemHasMultiServingBreakdown = (qty: number) => qty > 1;
-
-  const renderItemName = (item: OrderTabItem) => {
-    if (item.quantity > 1) {
-      return (
-        <>
-          {item.name}
-          <span className="ml-1 inline-block align-middle text-lg font-semibold text-primary">
-            (+{item.quantity - 1})
-          </span>
-        </>
-      );
-    }
-    return item.name;
-  };
-
-  // Demo breakdown
-  const getBreakdown = () => ({
-    sauce: { name: 'Stew', price: 800 },
-    secondServing: {
-      main: { name: 'Rice', price: 1500 },
-      sauce: { name: 'Cabbage sauce', price: 1200 },
-      extras: [
-        { name: 'Fried plantains', price: 700 },
-        { name: 'Boiled egg', price: 100 },
-      ],
-    },
-  });
-
   /* Group items by restaurant */
-  const groupedByRestaurant = items.reduce<Record<string, OrderItem[]>>((acc, item) => {
+  const groupedByRestaurant = items.reduce<Record<string, OrderTabItem[]>>((acc, item) => {
     if (!acc[item.restaurant]) acc[item.restaurant] = [];
     acc[item.restaurant].push(item);
     return acc;
   }, {});
 
-  const renderItemCard = (item: OrderItem) => {
-    const hasBreakdown = itemHasMultiServingBreakdown(item.quantity);
-    const isOpen = hasBreakdown && !!expandedItems[item.id];
-    const breakdown = hasBreakdown ? getBreakdown() : null;
+  const renderItemCard = (item: OrderTabItem) => {
+    const breakdown = parseMultiServingBreakdown(item.name, item.options_json);
+    const isOpen = breakdown !== null && !!expandedItems[item.id];
 
     return (
       <div
         key={item.id}
         className={`mb-4 rounded-xl bg-overlay-panel-background ${
-          hasBreakdown && isOpen ? 'relative z-30 shadow-2xl' : ''
-        } ${hasBreakdown ? '' : 'overflow-hidden'}`}
+          breakdown && isOpen ? 'relative z-30 shadow-2xl' : ''
+        } ${breakdown ? '' : 'overflow-hidden'}`}
       >
-        <div className={hasBreakdown ? 'overflow-hidden rounded-t-xl' : ''}>
+        <div className={breakdown ? 'overflow-hidden rounded-t-xl' : ''}>
           <div className="flex items-stretch gap-3 p-2">
             <div className="h-26 w-26 flex-shrink-0 overflow-hidden rounded-lg">
               <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
@@ -136,9 +108,9 @@ const Order: React.FC = () => {
             <div className="flex flex-1 min-w-0 flex-col">
               <div className="flex items-start justify-between gap-2">
                 <h4 className="text-foreground font-semibold text-lg leading-tight">
-                  {renderItemName(item)}
+                  <ItemNameWithServingSuffix name={item.name} />
                 </h4>
-                {hasBreakdown && isOpen ? (
+                {breakdown && isOpen ? (
                   <span aria-hidden className="text-foreground/80 pt-1">
                     <MoreHorizontal className="h-5 w-5" />
                   </span>
@@ -158,49 +130,10 @@ const Order: React.FC = () => {
             </div>
           </div>
 
-          {hasBreakdown && isOpen && breakdown && (
-            <div className="px-4 py-6 space-y-4 border-t-3 border-t-black/40">
-              <div>
-                <p className="text-xs text-muted-foreground/70">Sauce:</p>
-                <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                  <span className="text-foreground text-base">{breakdown.sauce.name}</span>
-                  <span className="text-foreground text-base">₦{breakdown.sauce.price.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3 mt-6">
-                <h5 className="text-foreground text-xl">Second serving</h5>
-                <div>
-                  <p className="text-xs text-muted-foreground/70">Main:</p>
-                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                    <span className="text-foreground text-base">{breakdown.secondServing.main.name}</span>
-                    <span className="text-foreground text-base">₦{breakdown.secondServing.main.price.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/70">Sauce:</p>
-                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                    <span className="text-foreground text-base">{breakdown.secondServing.sauce.name}</span>
-                    <span className="text-foreground text-base">₦{breakdown.secondServing.sauce.price.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/70 mb-1">Extras:</p>
-                  <div className="space-y-1.5">
-                    {breakdown.secondServing.extras.map((ex) => (
-                      <div key={ex.name} className="flex items-center justify-between">
-                        <span className="text-foreground text-base">{ex.name}</span>
-                        <span className="text-foreground text-base">₦{ex.price.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {breakdown && isOpen && <ServingBreakdownPanel breakdown={breakdown} />}
         </div>
 
-        {hasBreakdown && (
+        {breakdown && (
           <button
             type="button"
             onClick={() => toggleExpand(item.id)}

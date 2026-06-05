@@ -12,6 +12,8 @@ import { Plus, Minus, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-reac
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import OverlayChoiceModal from '../components/OverlayChoiceModal';
+import ServingBreakdownPanel, { ItemNameWithServingSuffix } from '../components/ServingBreakdownPanel';
+import { hasMultiServingBreakdown, parseMultiServingBreakdown } from '../lib/servingBreakdown';
 import { responsivePx } from '../constants/responsive';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -23,6 +25,7 @@ interface CartItem {
   quantity: number;
   image: string;
   section: 'main' | 'extras';
+  options_json?: Record<string, unknown>;
 }
 
 interface RestaurantOrder {
@@ -45,6 +48,7 @@ function mapCartGroup(g: RestaurantCartDto): RestaurantOrder {
       quantity: i.quantity,
       image: i.image ?? '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png',
       section: (i.section === 'extras' ? 'extras' : 'main') as 'main' | 'extras',
+      options_json: i.options_json ?? {},
     })),
   };
 }
@@ -72,7 +76,8 @@ const Cart: React.FC = () => {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   /* helpers */
-  const orderTotal = (items: CartItem[]) => items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const lineTotal = (item: CartItem) => item.price * item.quantity;
+  const orderTotal = (items: CartItem[]) => items.reduce((s, i) => s + lineTotal(i), 0);
   const itemCount = (items: CartItem[]) => items.reduce((s, i) => s + i.quantity, 0);
 
   const updateQuantity = async (restaurantId: string, itemId: string, delta: number) => {
@@ -80,6 +85,16 @@ const Cart: React.FC = () => {
     const item = group?.items.find((i) => i.id === itemId);
     if (!item) return;
     const nextQty = Math.max(1, item.quantity + delta);
+    setOrders((prev) =>
+      prev.map((r) =>
+        r.id !== restaurantId
+          ? r
+          : {
+              ...r,
+              items: r.items.map((i) => (i.id === itemId ? { ...i, quantity: nextQty } : i)),
+            },
+      ),
+    );
     await updateCartItemQuantity(itemId, nextQty);
     await reloadCart();
   };
@@ -118,54 +133,18 @@ const Cart: React.FC = () => {
   const toggleExpand = (id: string) =>
     setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  /** True when this line item represents multiple separate servings (name ends with " (+N)"). */
-  const itemHasMultiServingBreakdown = (name: string) => /\s*\(\+\d+\)$/.test(name);
-
-  /** Splits trailing " (+N)" so the suffix can use primary pill styling (e.g. extra servings). */
-  const renderItemName = (name: string) => {
-    const match = name.match(/^(.*?)(\s*\(\+\d+\))$/);
-    if (!match) return name;
-    const [, base, suffixWithSpace] = match;
-    const suffix = suffixWithSpace.trim();
-    return (
-      <>
-        {base}
-        <span className="ml-1 inline-block align-middle text-lg font-semibold text-primary">
-          {suffix}
-        </span>
-      </>
-    );
-  };
-
-  // Demo breakdown data — would come from item customization in real data
-  const getBreakdown = () => ({
-    sauce: { name: 'Stew', price: 800 },
-    secondServing: {
-      main: { name: 'Rice', price: 1500 },
-      sauce: { name: 'Cabbage sauce', price: 1200 },
-      extras: [
-        { name: 'Fried plantains', price: 700 },
-        { name: 'Boiled egg', price: 100 },
-        { name: 'Pepper meat', price: 1000 },
-        { name: 'Snail', price: 850 },
-        { name: 'Gizzard', price: 900 },
-      ],
-    },
-  });
-
   const renderItemCard = (restaurant: RestaurantOrder, item: CartItem) => {
-    const hasBreakdown = itemHasMultiServingBreakdown(item.name);
-    const isOpen = hasBreakdown && !!expandedItems[item.id];
-    const breakdown = hasBreakdown ? getBreakdown() : null;
+    const breakdown = parseMultiServingBreakdown(item.name, item.options_json);
+    const isOpen = breakdown !== null && !!expandedItems[item.id];
 
     return (
       <div
         key={item.id}
         className={`mb-4 rounded-xl bg-overlay-panel-background ${
-          hasBreakdown && isOpen ? 'relative z-30 shadow-2xl' : ''
-        } ${hasBreakdown ? '' : 'overflow-hidden'}`}
+          breakdown && isOpen ? 'relative z-30 shadow-2xl' : ''
+        } ${breakdown ? '' : 'overflow-hidden'}`}
       >
-        <div className={hasBreakdown ? 'overflow-hidden rounded-t-xl' : ''}>
+        <div className={breakdown ? 'overflow-hidden rounded-t-xl' : ''}>
           <div className="flex items-stretch gap-3 p-2">
             <div className="h-26 w-26 flex-shrink-0 overflow-hidden rounded-lg">
               <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
@@ -173,9 +152,9 @@ const Cart: React.FC = () => {
             <div className="flex flex-1 min-w-0 flex-col">
               <div className="flex items-start justify-between gap-2">
                 <h4 className="text-foreground font-semibold text-lg leading-tight">
-                  {renderItemName(item.name)}
+                  <ItemNameWithServingSuffix name={item.name} />
                 </h4>
-                {hasBreakdown && isOpen ? (
+                {breakdown && isOpen ? (
                   <span aria-hidden className="text-foreground/80 pt-1">
                     <MoreHorizontal className="h-5 w-5" />
                   </span>
@@ -191,7 +170,7 @@ const Cart: React.FC = () => {
                 )}
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-              <p className="mt-1 text-primary font-regular text-lg">₦{item.price.toLocaleString()}</p>
+              <p className="mt-1 text-primary font-regular text-lg">₦{lineTotal(item).toLocaleString()}</p>
               <div className="mt-auto flex items-center justify-end gap-1 pt-0">
                 <div className="flex bg-black rounded-full items-center">
                   <button
@@ -216,49 +195,10 @@ const Cart: React.FC = () => {
             </div>
           </div>
 
-          {hasBreakdown && isOpen && breakdown && (
-            <div className="px-4 py-6 space-y-4 border-t-3 border-t-black/40">
-              <div>
-                <p className="text-xs text-muted-foreground/70">Sauce:</p>
-                <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                  <span className="text-foreground text-base">{breakdown.sauce.name}</span>
-                  <span className="text-foreground text-base">₦{breakdown.sauce.price.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3 mt-6">
-                <h5 className="text-foreground text-xl">Second serving</h5>
-                <div>
-                  <p className="text-xs text-muted-foreground/70">Main:</p>
-                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                    <span className="text-foreground text-base">{breakdown.secondServing.main.name}</span>
-                    <span className="text-foreground text-base">₦{breakdown.secondServing.main.price.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/70">Sauce:</p>
-                  <div className="flex items-center justify-between border-b border-white/40 pb-1">
-                    <span className="text-foreground text-base">{breakdown.secondServing.sauce.name}</span>
-                    <span className="text-foreground text-base">₦{breakdown.secondServing.sauce.price.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground/70 mb-1">Extras:</p>
-                  <div className="space-y-1.5">
-                    {breakdown.secondServing.extras.map((ex) => (
-                      <div key={ex.name} className="flex items-center justify-between">
-                        <span className="text-foreground text-base">{ex.name}</span>
-                        <span className="text-foreground text-base">₦{ex.price.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {breakdown && isOpen && <ServingBreakdownPanel breakdown={breakdown} />}
         </div>
 
-        {hasBreakdown && (
+        {breakdown && (
           <button
             type="button"
             onClick={() => toggleExpand(item.id)}
@@ -275,7 +215,8 @@ const Cart: React.FC = () => {
   const anyServingDropdownOpen =
     detailRestaurant != null &&
     detailRestaurant.items.some(
-      (item) => itemHasMultiServingBreakdown(item.name) && expandedItems[item.id],
+      (item) =>
+        hasMultiServingBreakdown(item.options_json, item.name) && expandedItems[item.id],
     );
 
   return (

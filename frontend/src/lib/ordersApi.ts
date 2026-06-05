@@ -8,6 +8,7 @@ export interface OrderTabItem {
   quantity: number;
   image: string;
   restaurant: string;
+  options_json?: Record<string, unknown>;
 }
 
 export interface TrackingStep {
@@ -42,6 +43,7 @@ export async function fetchOrderSummary(): Promise<{
       quantity: number;
       image?: string;
       restaurant: string;
+      options_json?: Record<string, unknown>;
     }>;
     delivery_fee?: number;
     pending_order_id?: string | null;
@@ -65,6 +67,7 @@ export async function fetchOrderSummary(): Promise<{
     quantity: i.quantity,
     image: i.image ?? '',
     restaurant: i.restaurant,
+    options_json: i.options_json ?? {},
   }));
   const ongoing = dto?.ongoing
     ? {

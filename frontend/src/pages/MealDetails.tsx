@@ -4,6 +4,7 @@ import { addCartItem } from '../lib/cartApi';
 import {
   buildOptionsJson,
   buildSizeOptionsJson,
+  cartItemNameForServings,
   fetchMealModifiers,
   type ModifierOption,
 } from '../lib/menuModifiersApi';
@@ -288,12 +289,18 @@ const MealDetails: React.FC = () => {
       const result = await addCartItem({
         restaurant_id: restaurantId,
         menu_item_id: meal.id,
-        name: meal.name,
+        name: cartItemNameForServings(meal.name, servings.length),
         unit_price: lineUnitPrice,
         quantity,
         image_url: meal.image,
         section: 'main',
-        options_json: buildOptionsJson(servings, saucePriceById, extrasPriceById),
+        options_json: buildOptionsJson(
+          servings,
+          saucePriceById,
+          extrasPriceById,
+          basePrice,
+          meal.name,
+        ),
         special_instructions: note.trim() || undefined,
       });
       if (!result.ok) {
