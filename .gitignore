@@ -49,3 +49,7 @@ venv/
 **/scripts/**
 /scripts
 /scripts/*
+
+**/pycache/**
+**/*.py[cod]
+**/__pycache__/
