@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createDeposit, fetchDepositAccount, type DepositAccountInfo } from '../lib/paymentsApi';
 import { FiChevronRight, FiCopy, FiCreditCard } from 'react-icons/fi';
 import { BsBank } from 'react-icons/bs';
 import BackButton from '../components/BackButton';
@@ -31,26 +32,42 @@ const Deposit = () => {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [depositError, setDepositError] = useState<string | null>(null);
 
-  const walletInfo = {
-    owner: 'John Doe',
-    walletId: '898JUE376E3Y7731',
-    gateway: 'Paystack',
-    accountNumber: '4714565146'
-  };
+  const [walletInfo, setWalletInfo] = useState<DepositAccountInfo | null>(null);
+  const [walletNote, setWalletNote] = useState<string | null>(null);
+
+  const loadDepositAccount = useCallback(async () => {
+    const { account, error } = await fetchDepositAccount();
+    if (error || !account) {
+      setWalletInfo(null);
+      setWalletNote('Deposit details unavailable — sign in or add a deposit account in the database.');
+      return;
+    }
+    setWalletInfo(account);
+    setWalletNote(null);
+  }, []);
+
+  useEffect(() => {
+    if (activeMethod === 'wallet') loadDepositAccount();
+  }, [activeMethod, loadDepositAccount]);
 
   const amountDisplay =
     amountDigits === '' ? '' : Number(amountDigits).toLocaleString('en-NG');
-  const hasValidBankAmount = amountDigits.length > 0 && Number(amountDigits) > 0;
+  const depositAmount = Number(amountDigits);
+  const hasValidAmount = amountDigits.length > 0 && depositAmount > 0;
 
   const isCardOrBank = activeMethod === 'card' || activeMethod === 'bank';
   const hasValidCardDetails =
+    hasValidAmount &&
     cardHolder.trim().length > 0 &&
     cardNumber.replace(/\s/g, '').length >= 13 &&
     cardExpiry.trim().length >= 4 &&
     cvv.trim().length >= 3;
 
   const handleCopy = () => {
+    if (!walletInfo) return;
     navigator.clipboard.writeText(walletInfo.accountNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -67,12 +84,25 @@ const Deposit = () => {
     return parts.length ? parts.join(' ') : value;
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (!hasValidAmount) return;
     if (activeMethod === 'bank') {
-      navigate('/deposit/bank-transfer-details');
+      navigate('/deposit/bank-transfer-details', { state: { amount: depositAmount } });
       return;
     }
-    navigate('/deposit-success');
+    if (activeMethod === 'card') {
+      setSubmitting(true);
+      setDepositError(null);
+      const result = await createDeposit('card', depositAmount);
+      setSubmitting(false);
+      if (!result.ok) {
+        setDepositError(result.error ?? 'Deposit failed. Sign in and try again.');
+        return;
+      }
+      navigate('/deposit-success', {
+        state: { amount: depositAmount, balance: result.balance },
+      });
+    }
   };
 
   return (
@@ -91,6 +121,10 @@ const Deposit = () => {
       >
         {activeMethod === 'wallet' && (
           <>
+            {walletNote && (
+              <p className="mb-4 text-sm text-muted-foreground">{walletNote}</p>
+            )}
+            {walletInfo && (
             <div className="mb-4 rounded-2xl bg-[#2a2a2a] p-5 text-white">
               <div className="mb-4 border-b border-gray-700 pb-3">
                 <h2 className="text-lg font-semibold">Wallet</h2>
@@ -98,11 +132,11 @@ const Deposit = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-400">Wallet owner</span>
-                  <span className="text-sm">{walletInfo.owner}</span>
+                  <span className="text-sm">{walletInfo.owner_name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-400">Wallet ID</span>
-                  <span className="text-sm">{walletInfo.walletId}</span>
+                  <span className="text-sm">{walletInfo.wallet_id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-400">Payment Gateway</span>
@@ -111,7 +145,7 @@ const Deposit = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">Account number</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{walletInfo.accountNumber}</span>
+                    <span className="text-sm">{walletInfo.account_number}</span>
                     <button type="button" onClick={handleCopy} className="text-gray-400 hover:text-white">
                       <FiCopy className="text-lg" />
                     </button>
@@ -120,6 +154,7 @@ const Deposit = () => {
                 {copied && <p className="text-right text-xs text-[#FF6B35]">Copied!</p>}
               </div>
             </div>
+            )}
 
             <div className="mt-4 space-y-3">
               <button
@@ -165,6 +200,19 @@ const Deposit = () => {
 
             {activeMethod === 'card' && (
               <div className="space-y-4">
+                <div className="rounded-lg bg-overlay-panel-background px-4 pb-6 pt-4">
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground/50">Amount (₦)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={amountDisplay}
+                    onChange={(e) => setAmountDigits(e.target.value.replace(/\D/g, ''))}
+                    className="mt-1 w-full bg-transparent text-3xl font-semibold text-foreground outline-none placeholder:font-semibold placeholder:text-muted-foreground/60"
+                    placeholder="0"
+                    aria-label="Deposit amount"
+                  />
+                </div>
                 <div className="rounded-lg bg-overlay-panel-background px-4 py-2.5">
                   <label className="text-xs uppercase tracking-wide text-muted-foreground/50">Card Holder</label>
                   <input
@@ -233,6 +281,10 @@ const Deposit = () => {
         )}
       </div>
 
+      {depositError && isCardOrBank && (
+        <p className={`${responsivePx} pb-2 text-sm text-red-400`}>{depositError}</p>
+      )}
+
       {isCardOrBank && (
         <div
           className={`fixed bottom-0 left-0 right-0 z-40 bg-black ${responsivePx} pb-[max(1rem,env(safe-area-inset-bottom))] pt-3`}
@@ -241,11 +293,12 @@ const Deposit = () => {
             type="button"
             variant="primary"
             disabled={
-              activeMethod === 'bank' ? !hasValidBankAmount : !hasValidCardDetails
+              submitting ||
+              (activeMethod === 'bank' ? !hasValidAmount : !hasValidCardDetails)
             }
             onClick={handleConfirm}
           >
-            Confirm
+            {submitting ? 'Processing…' : 'Confirm'}
           </Button>
         </div>
       )}

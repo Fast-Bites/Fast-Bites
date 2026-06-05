@@ -7,6 +7,7 @@ from database import get_db
 from models.user import User
 from schemas.user import UserUpdate, UserResponse
 from services.jwt_auth import get_current_user
+from services.supabase_admin import delete_auth_user
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["profile"])
@@ -156,24 +157,34 @@ async def delete_profile(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete current user's profile"""
+    """
+    Delete the current user's app profile (if any) and Supabase Auth user.
+    Matches backend/scripts/delete_users.py: DB row + Auth admin DELETE.
+    """
     try:
         user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid user data")
+
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        
-        await db.delete(user)
-        await db.commit()
-        
-        log.info(f"Profile deleted: {user.email}")
-        return {"message": "Profile deleted"}
-        
+
+        if user:
+            await db.delete(user)
+            await db.commit()
+            log.info("Profile row deleted: %s", user.email)
+        else:
+            log.info("No profile row for user id %s; removing Auth user only", user_id)
+
+        auth_err = await delete_auth_user(str(user_id))
+        if auth_err:
+            raise HTTPException(status_code=503, detail=auth_err)
+
+        return {"message": "Account deleted"}
+
     except HTTPException:
         raise
     except Exception as e:
-        log.error(f"Delete profile failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete profile")
+        log.error("Delete account failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to delete account")
 

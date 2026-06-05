@@ -14,5 +14,5 @@ alembic revision --autogenerate -m "<migration_name>"
 alembic upgrade head
 
 ; How to run the app
-uvicorn main:app --reload --port <port_number>
+uvicorn main:app --reload --port 8004
 docker-compose up --build

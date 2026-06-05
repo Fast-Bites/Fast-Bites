@@ -1,8 +1,13 @@
 import React from 'react';
 import OverlayModalBackdropLayer from './OverlayModalBackdropLayer';
 
-/** `green` = popup lime (Yes/No). `app-green` = brand green (e.g. legacy modal actions). */
-export type OverlayModalActionVariant = 'green' | 'app-green' | 'primary' | 'outline-green';
+/** `green` = popup lime (Yes/No). `outline-primary` = orange border (e.g. Add Card save modal). */
+export type OverlayModalActionVariant =
+  | 'green'
+  | 'app-green'
+  | 'primary'
+  | 'outline-green'
+  | 'outline-primary';
 
 export interface OverlayModalAction {
   label: string;
@@ -18,11 +23,19 @@ interface OverlayChoiceModalProps {
   message?: React.ReactNode;
   imageSrc?: string;
   imageAlt?: string;
+  /** Small icon in an orange circle above the title (e.g. Add Card modals). */
+  iconBadgeSrc?: string;
   /** Ignored when `footer` is set. */
   actions?: OverlayModalAction[];
   /** Cart-style side-by-side vs stacked pills (e.g. order complete). */
   actionsLayout?: 'row' | 'column';
   panelClassName?: string;
+  /** Extra classes on the actions row/column wrapper (e.g. `gap-4`). */
+  actionsClassName?: string;
+  /** When false, action buttons use a fixed width instead of stretching (Add Card only). Default true. */
+  actionsStretch?: boolean;
+  /** Extra classes on each action button (e.g. Add Card pill shape). */
+  actionButtonClassName?: string;
   /**
    * Custom actions (e.g. auth `Button` components). When set, `actions` is ignored.
    * Use for Order congratulations: extra vertical space icon → copy → buttons.
@@ -30,11 +43,17 @@ interface OverlayChoiceModalProps {
   footer?: React.ReactNode;
 }
 
-function actionClass(variant: OverlayModalActionVariant, layout: 'row' | 'column'): string {
-  const rowBase =
-    'flex-1 min-w-0 rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80';
-  const colBase =
-    'w-full rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80';
+function actionClass(
+  variant: OverlayModalActionVariant,
+  layout: 'row' | 'column',
+  stretch: boolean,
+): string {
+  const rowBase = stretch
+    ? 'flex-1 min-w-0 rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80'
+    : 'w-[5.25rem] shrink-0 rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80';
+  const colBase = stretch
+    ? 'w-full rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80'
+    : 'mx-auto w-[5.25rem] shrink-0 rounded-md py-2 text-center text-sm font-semibold transition-opacity hover:opacity-80';
 
   if (layout === 'column') {
     switch (variant) {
@@ -46,6 +65,8 @@ function actionClass(variant: OverlayModalActionVariant, layout: 'row' | 'column
         return `${colBase} bg-primary text-primary-foreground`;
       case 'outline-green':
         return `${colBase} border-2 border-app-green bg-transparent text-app-green`;
+      case 'outline-primary':
+        return `${colBase} border-2 border-primary bg-transparent text-foreground`;
     }
   }
 
@@ -58,7 +79,17 @@ function actionClass(variant: OverlayModalActionVariant, layout: 'row' | 'column
       return `${rowBase} bg-primary text-primary-foreground`;
     case 'outline-green':
       return `${rowBase} border-2 border-app-green bg-transparent text-app-green`;
+    case 'outline-primary':
+      return `${rowBase} border-2 border-primary bg-transparent text-foreground`;
   }
+}
+
+function ModalIconBadge({ src }: { src: string }) {
+  return (
+    <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+      <img src={src} alt="" className="h-5 w-5 object-contain" aria-hidden />
+    </span>
+  );
 }
 
 const OverlayChoiceModal: React.FC<OverlayChoiceModalProps> = ({
@@ -69,17 +100,22 @@ const OverlayChoiceModal: React.FC<OverlayChoiceModalProps> = ({
   message,
   imageSrc,
   imageAlt = '',
+  iconBadgeSrc,
   actions = [],
   actionsLayout = 'row',
   panelClassName = '',
+  actionsClassName = '',
+  actionsStretch = true,
+  actionButtonClassName = '',
   footer,
 }) => {
   if (!open) return null;
 
+  const actionsMinWidth = actionsStretch ? 'min-w-[200px]' : 'min-w-0';
   const actionsClass =
     actionsLayout === 'column'
-      ? 'flex w-full min-w-[200px] flex-col gap-3'
-      : 'flex w-full min-w-[200px] gap-12';
+      ? `flex w-full ${actionsMinWidth} flex-col gap-3 ${actionsClassName}`
+      : `flex w-full ${actionsMinWidth} gap-12 ${actionsClassName}`;
 
   const useFooter = Boolean(footer);
 
@@ -100,7 +136,9 @@ const OverlayChoiceModal: React.FC<OverlayChoiceModalProps> = ({
       >
         {useFooter ? (
           <>
-            {imageSrc ? (
+            {iconBadgeSrc ? (
+              <ModalIconBadge src={iconBadgeSrc} />
+            ) : imageSrc ? (
               <img
                 src={imageSrc}
                 alt={imageAlt}
@@ -115,7 +153,9 @@ const OverlayChoiceModal: React.FC<OverlayChoiceModalProps> = ({
           </>
         ) : (
           <>
-            {imageSrc ? (
+            {iconBadgeSrc ? (
+              <ModalIconBadge src={iconBadgeSrc} />
+            ) : imageSrc ? (
               <img src={imageSrc} alt={imageAlt} className="mx-auto h-32 w-32 object-contain" />
             ) : null}
             <p className={`text-center text-foreground ${titleClassName}`}>{title}</p>
@@ -128,7 +168,7 @@ const OverlayChoiceModal: React.FC<OverlayChoiceModalProps> = ({
                   key={a.label}
                   type="button"
                   onClick={a.onClick}
-                  className={actionClass(a.variant, actionsLayout)}
+                  className={`${actionClass(a.variant, actionsLayout, actionsStretch)} ${actionButtonClassName}`}
                 >
                   {a.label}
                 </button>

@@ -1,15 +1,27 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { addCartItem } from '../lib/cartApi';
+import {
+  buildOptionsJson,
+  buildSizeOptionsJson,
+  fetchMealModifiers,
+  type ModifierOption,
+} from '../lib/menuModifiersApi';
+import { createOrderFromCart } from '../lib/ordersApi';
 import { responsivePx } from '../constants/responsive';
 import Button from '../components/Button';
 import BackButton from '../components/BackButton';
 import OverlayChoiceModal from '../components/OverlayChoiceModal';
 
+/** Scrollable modifier list — opens over content; max height keeps options reachable. */
+const MODIFIER_DROPDOWN_PANEL =
+  'absolute left-0 right-0 z-50 flex max-h-44 flex-col gap-2 overflow-y-auto overscroll-y-contain rounded-lg border border-muted-foreground/40 bg-background py-3 pl-3 pr-3 shadow-lg touch-manipulation';
 
 interface MealData {
   id: string;
   name: string;
   restaurant: string;
+  restaurant_id?: string;
   time: string;
   price: string;
   image: string;
@@ -18,25 +30,24 @@ interface MealData {
 }
 
 interface Serving {
-  sauce: string;
-  extras: string;
+  sauceId: string;
+  sauceLabel: string;
+  extrasId: string;
+  extrasLabel: string;
   sauceOpen: boolean;
   extrasOpen: boolean;
 }
 
-const sizeOptions = ['Small', 'Medium', 'Large'];
-const sauceOptions = ['Stew', 'Vegetable sauce', 'Chicken sauce'];
-const extrasOptions = ['Extra cheese', 'Plantain', 'Coleslaw'];
+const emptyServing = (): Serving => ({
+  sauceId: '',
+  sauceLabel: '',
+  extrasId: '',
+  extrasLabel: '',
+  sauceOpen: false,
+  extrasOpen: false,
+});
 
-function optionPriceNaira(label: string, mealId: string, kind: 'sauce' | 'extra'): number {
-  let h = 0;
-  const str = `${kind}|${mealId}|${label}`;
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 33 + str.charCodeAt(i)) >>> 0;
-  }
-  if (kind === 'sauce') return 200 + (h % 501);
-  return 150 + (h % 451);
-}
+const SIZE_LABELS = ['Small', 'Medium', 'Large'] as const;
 
 function parseMealState(state: unknown): MealData | null {
   if (!state || typeof state !== 'object') return null;
@@ -48,25 +59,66 @@ function parseMealState(state: unknown): MealData | null {
 
 const MealDetails: React.FC = () => {
   const location = useLocation();
-  const { restaurantId } = useParams<{ restaurantId?: string; mealId?: string }>();
+  const navigate = useNavigate();
+  const { restaurantId, mealId, id: homeMealId } = useParams<{
+    restaurantId?: string;
+    mealId?: string;
+    id?: string;
+  }>();
 
   const meal = useMemo(() => parseMealState(location.state), [location.state]);
   const fromRestaurantContext = Boolean(restaurantId);
+  const mealItemId = mealId ?? homeMealId ?? meal?.id;
 
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
-  const [selectedSize, setSelectedSize] = useState('Small');
+  const [selectedSizeId, setSelectedSizeId] = useState('');
   const [addedToCart, setAddedToCart] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
+  const [orderBusy, setOrderBusy] = useState(false);
 
-  // Multi-serving state for restaurant flow
-  const [servings, setServings] = useState<Serving[]>([
-    { sauce: '', extras: '', sauceOpen: false, extrasOpen: false },
-  ]);
+  const [sauceOptions, setSauceOptions] = useState<ModifierOption[]>([]);
+  const [extrasOptions, setExtrasOptions] = useState<ModifierOption[]>([]);
+  const [sizeOptions, setSizeOptions] = useState<ModifierOption[]>([]);
+  const [modifiersNote, setModifiersNote] = useState<string | null>(null);
+  const [modifiersLoading, setModifiersLoading] = useState(false);
+
+  const [servings, setServings] = useState<Serving[]>([emptyServing()]);
   const [deleteTargetIdx, setDeleteTargetIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!mealItemId) return;
+    setModifiersLoading(true);
+    fetchMealModifiers(mealItemId).then(
+      ({ sauceOptions: sauces, extrasOptions: extras, sizeOptions: sizes, modifiersNote: note }) => {
+        if (fromRestaurantContext) {
+          setSauceOptions(sauces);
+          setExtrasOptions(extras);
+          setModifiersNote(note);
+        } else {
+          setSauceOptions([]);
+          setExtrasOptions([]);
+          setModifiersNote(null);
+          setSizeOptions(sizes);
+        }
+        setModifiersLoading(false);
+      },
+    );
+  }, [fromRestaurantContext, mealItemId]);
+
+  useEffect(() => {
+    if (fromRestaurantContext || sizeOptions.length === 0) return;
+    setSelectedSizeId((prev) => {
+      if (prev && sizeOptions.some((o) => o.id === prev)) return prev;
+      const medium = sizeOptions.find((o) => o.label.toLowerCase() === 'medium');
+      return medium?.id ?? sizeOptions[0].id;
+    });
+  }, [fromRestaurantContext, sizeOptions]);
 
   // Bottom sheet state
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef(0);
   const dragCurrentY = useRef(0);
   const isDragging = useRef(false);
@@ -96,23 +148,80 @@ const MealDetails: React.FC = () => {
     else if (diff < -50) collapseSheet();
   }, [expandSheet, collapseSheet]);
 
-  const mealIdForPricing = meal?.id ?? '';
-
-  const saucePriceMap = useMemo(() => {
+  const saucePriceById = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const s of sauceOptions) m[s] = optionPriceNaira(s, mealIdForPricing, 'sauce');
+    for (const o of sauceOptions) m[o.id] = o.price;
     return m;
-  }, [mealIdForPricing]);
+  }, [sauceOptions]);
 
-  const extrasPriceMap = useMemo(() => {
+  const extrasPriceById = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const e of extrasOptions) m[e] = optionPriceNaira(e, mealIdForPricing, 'extra');
+    for (const o of extrasOptions) m[o.id] = o.price;
     return m;
-  }, [mealIdForPricing]);
+  }, [extrasOptions]);
+
+  const sizePriceById = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const o of sizeOptions) m[o.id] = o.price;
+    return m;
+  }, [sizeOptions]);
+
+  const sizeByLabel = useMemo(() => {
+    const m = new Map<string, ModifierOption>();
+    for (const o of sizeOptions) m.set(o.label.toLowerCase(), o);
+    return m;
+  }, [sizeOptions]);
+
+  const selectedSizeOption = sizeOptions.find((o) => o.id === selectedSizeId);
+  const sizePriceDelta = selectedSizeId ? sizePriceById[selectedSizeId] ?? 0 : 0;
+
+  const sauceRequired = sauceOptions.length > 0;
+
+  const preserveSheetScroll = (update: () => void) => {
+    const el = sheetScrollRef.current;
+    const scrollTop = el?.scrollTop ?? 0;
+    update();
+    requestAnimationFrame(() => {
+      if (el) el.scrollTop = scrollTop;
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = scrollTop;
+      });
+    });
+  };
+
+  const applyModifierChoice = (
+    idx: number,
+    field: 'sauce' | 'extras',
+    choice: ModifierOption | null,
+  ) => {
+    preserveSheetScroll(() => {
+      setServings((prev) =>
+        prev.map((s, i) => {
+          if (i !== idx) return s;
+          if (field === 'sauce') {
+            return {
+              ...s,
+              sauceId: choice?.id ?? '',
+              sauceLabel: choice?.label ?? '',
+              sauceOpen: false,
+            };
+          }
+          return {
+            ...s,
+            extrasId: choice?.id ?? '',
+            extrasLabel: choice?.label ?? '',
+            extrasOpen: false,
+          };
+        }),
+      );
+    });
+  };
 
   // Serving helpers
   const updateServing = (idx: number, patch: Partial<Serving>) => {
-    setServings((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+    preserveSheetScroll(() => {
+      setServings((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+    });
   };
 
   const closeAllDropdowns = (exceptIdx?: number, exceptField?: 'sauce' | 'extras') => {
@@ -131,7 +240,7 @@ const MealDetails: React.FC = () => {
   };
 
   const addServing = () => {
-    setServings((prev) => [...prev, { sauce: '', extras: '', sauceOpen: false, extrasOpen: false }]);
+    setServings((prev) => [...prev, emptyServing()]);
   };
 
   const confirmDeleteServing = () => {
@@ -154,24 +263,123 @@ const MealDetails: React.FC = () => {
   // Calculate total across all servings
   const servingsCost = fromRestaurantContext
     ? servings.reduce((sum, s) => {
-        const sc = s.sauce ? saucePriceMap[s.sauce] ?? 0 : 0;
-        const ec = s.extras ? extrasPriceMap[s.extras] ?? 0 : 0;
+        const sc = s.sauceId ? saucePriceById[s.sauceId] ?? 0 : 0;
+        const ec = s.extrasId ? extrasPriceById[s.extrasId] ?? 0 : 0;
         return sum + sc + ec;
       }, 0)
     : 0;
-  const totalPrice = basePrice * quantity + servingsCost;
+  const homeUnitPrice = basePrice + sizePriceDelta;
+  const totalPrice = fromRestaurantContext
+    ? basePrice * quantity + servingsCost
+    : homeUnitPrice * quantity;
+
+  const addCurrentMealToCart = async (): Promise<{
+    ok: boolean;
+    restaurantId?: string;
+    error?: string;
+  }> => {
+    if (fromRestaurantContext) {
+      if (!restaurantId) return { ok: false, error: 'Restaurant not found.' };
+      if (sauceRequired && servings.some((s) => !s.sauceId)) {
+        return { ok: false, error: 'Please choose a sauce for each serving.' };
+      }
+      const lineUnitPrice =
+        quantity > 0 ? (basePrice * quantity + servingsCost) / quantity : basePrice;
+      const result = await addCartItem({
+        restaurant_id: restaurantId,
+        menu_item_id: meal.id,
+        name: meal.name,
+        unit_price: lineUnitPrice,
+        quantity,
+        image_url: meal.image,
+        section: 'main',
+        options_json: buildOptionsJson(servings, saucePriceById, extrasPriceById),
+        special_instructions: note.trim() || undefined,
+      });
+      if (!result.ok) {
+        return { ok: false, error: result.error ?? 'Could not add to cart — sign in and try again.' };
+      }
+      return { ok: true, restaurantId };
+    }
+
+    const homeRestaurantId = meal.restaurant_id;
+    if (!homeRestaurantId) {
+      return { ok: false, error: 'Restaurant information is missing for this meal.' };
+    }
+    if (sizeOptions.length > 0 && !selectedSizeId) {
+      return { ok: false, error: 'Please choose a size.' };
+    }
+    const result = await addCartItem({
+      restaurant_id: homeRestaurantId,
+      menu_item_id: meal.id,
+      name: meal.name,
+      unit_price: homeUnitPrice,
+      quantity,
+      image_url: meal.image,
+      section: 'main',
+      options_json: selectedSizeOption
+        ? buildSizeOptionsJson(selectedSizeId, selectedSizeOption.label, sizePriceDelta)
+        : {},
+      special_instructions: note.trim() || undefined,
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error ?? 'Could not add to cart — sign in and try again.' };
+    }
+    return { ok: true, restaurantId: homeRestaurantId };
+  };
+
+  const handleAddToCart = async () => {
+    setCartError(null);
+    const result = await addCurrentMealToCart();
+    if (!result.ok) {
+      setCartError(result.error ?? 'Could not add to cart.');
+      return;
+    }
+    setAddedToCart(true);
+  };
+
+  const handleOrderNow = async () => {
+    if (orderBusy) return;
+    setCartError(null);
+    setOrderBusy(true);
+    const addResult = await addCurrentMealToCart();
+    if (!addResult.ok) {
+      setCartError(addResult.error ?? 'Could not add to cart.');
+      setOrderBusy(false);
+      return;
+    }
+    const orderResult = await createOrderFromCart(addResult.restaurantId!);
+    setOrderBusy(false);
+    if (!orderResult.ok) {
+      setCartError(orderResult.error ?? 'Could not start your order. Please try again.');
+      return;
+    }
+    navigate('/orders');
+  };
 
   const description =
     meal.description ||
     'Crafted with a stone-baked crust, rich herb-infused sauce and a generous layer of melted cheese. Our pizza is loaded with fresh, high-quality toppings that deliver a rich and unforgettable flavor experience.';
 
-  const anyDropdownOpen = servings.some((s) => s.sauceOpen || s.extrasOpen);
+  const modifierOptionPick = (
+    e: React.PointerEvent,
+    idx: number,
+    field: 'sauce' | 'extras',
+    choice: ModifierOption | null,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applyModifierChoice(idx, field, choice);
+  };
 
   // Render a single serving's sauce + extras dropdowns
   const renderServing = (serving: Serving, idx: number) => {
-    const saucePrice = serving.sauce ? saucePriceMap[serving.sauce] ?? 0 : 0;
-    const extrasPrice = serving.extras ? extrasPriceMap[serving.extras] ?? 0 : 0;
+    const saucePrice = serving.sauceId ? saucePriceById[serving.sauceId] ?? 0 : 0;
+    const extrasPrice = serving.extrasId ? extrasPriceById[serving.extrasId] ?? 0 : 0;
     const isExtra = idx > 0;
+    /** Additional servings sit low in the sheet — open lists upward so options aren't clipped. */
+    const sauceDropdownPosition = isExtra ? 'bottom-full mb-1' : 'top-full mt-1';
+    const extrasDropdownPosition = 'bottom-full mb-1';
 
     return (
       <div key={idx} className={isExtra ? 'mt-4 pt-4 border-t border-muted-foreground/20' : ''}>
@@ -190,8 +398,11 @@ const MealDetails: React.FC = () => {
         )}
 
         {/* Sauce dropdown */}
+        {sauceOptions.length > 0 && (
         <div className="mb-2">
-          <h3 className="text-foreground text-lg font-light mb-2">Choose a sauce (required):</h3>
+          <h3 className="text-foreground text-lg font-light mb-2">
+            Choose a sauce{sauceRequired ? ' (required)' : ''}:
+          </h3>
           <div className={`relative ${serving.sauceOpen ? 'z-40' : 'z-0'}`}>
             <button
               type="button"
@@ -203,8 +414,8 @@ const MealDetails: React.FC = () => {
               }}
               className="relative z-10 flex w-full items-center justify-between rounded-lg border border-muted-foreground/40 bg-background p-3 text-sm"
             >
-              <span className={serving.sauce ? 'text-foreground' : 'text-muted-foreground/50'}>
-                {serving.sauce || 'Select a sauce'}
+              <span className={serving.sauceLabel ? 'text-foreground' : 'text-muted-foreground/50'}>
+                {serving.sauceLabel || 'Select a sauce'}
               </span>
               <img
                 src="/assets/down-arrow.svg"
@@ -214,30 +425,49 @@ const MealDetails: React.FC = () => {
             </button>
             {serving.sauceOpen && sheetExpanded && (
               <div
-                className="absolute left-0 right-0 top-full z-50 flex flex-col gap-7 rounded-lg border border-muted-foreground/40 bg-background py-7 pl-3 pr-3 shadow-lg"
+                className={`${MODIFIER_DROPDOWN_PANEL} ${sauceDropdownPosition}`}
                 role="listbox"
               >
-                {sauceOptions.map((s) => (
+                <button
+                  type="button"
+                  role="option"
+                  tabIndex={-1}
+                  onPointerDown={(e) => modifierOptionPick(e, idx, 'sauce', null)}
+                  className="w-full shrink-0 bg-transparent text-left text-sm text-muted-foreground transition-opacity hover:opacity-80"
+                >
+                  None
+                </button>
+                {sauceOptions.map((opt) => (
                   <button
-                    key={s}
+                    key={opt.id}
                     type="button"
                     role="option"
-                    onClick={() => updateServing(idx, { sauce: s, sauceOpen: false })}
-                    className="flex w-full items-center justify-between gap-3 bg-transparent text-left text-sm text-foreground transition-opacity hover:opacity-80"
+                    tabIndex={-1}
+                    aria-selected={serving.sauceId === opt.id}
+                    onPointerDown={(e) =>
+                      modifierOptionPick(
+                        e,
+                        idx,
+                        'sauce',
+                        serving.sauceId === opt.id ? null : opt,
+                      )
+                    }
+                    className="w-full shrink-0 bg-transparent text-left text-sm text-foreground transition-opacity hover:opacity-80"
                   >
-                    <span>{s}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">₦{saucePriceMap[s].toLocaleString()}</span>
+                    {opt.label}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.sauce ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
-            Cost: ₦{saucePrice.toLocaleString()}
+          <p className={`mt-1 text-right text-xs ${serving.sauceLabel ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
+            {serving.sauceLabel ? `Cost: ₦${saucePrice.toLocaleString()}` : 'Cost: ₦0'}
           </p>
         </div>
+        )}
 
         {/* Extras dropdown */}
+        {extrasOptions.length > 0 && (
         <div className="mb-2">
           <h3 className="text-foreground text-lg font-light mb-2">Extras (Optional):</h3>
           <div className={`relative ${serving.extrasOpen ? 'z-40' : 'z-0'}`}>
@@ -251,8 +481,8 @@ const MealDetails: React.FC = () => {
               }}
               className="relative z-10 flex w-full items-center justify-between rounded-lg border border-muted-foreground/40 bg-background p-3 text-sm"
             >
-              <span className={serving.extras ? 'text-foreground' : 'text-muted-foreground/50'}>
-                {serving.extras || 'Select your extras'}
+              <span className={serving.extrasLabel ? 'text-foreground' : 'text-muted-foreground/50'}>
+                {serving.extrasLabel || 'Select your extras'}
               </span>
               <img
                 src="/assets/down-arrow.svg"
@@ -262,28 +492,46 @@ const MealDetails: React.FC = () => {
             </button>
             {serving.extrasOpen && sheetExpanded && (
               <div
-                className="absolute left-0 right-0 top-full z-50 flex flex-col gap-7 rounded-lg border border-muted-foreground/40 bg-background py-7 pl-3 pr-3 shadow-lg"
+                className={`${MODIFIER_DROPDOWN_PANEL} ${extrasDropdownPosition}`}
                 role="listbox"
               >
-                {extrasOptions.map((e) => (
+                <button
+                  type="button"
+                  role="option"
+                  tabIndex={-1}
+                  onPointerDown={(e) => modifierOptionPick(e, idx, 'extras', null)}
+                  className="w-full shrink-0 bg-transparent text-left text-sm text-muted-foreground transition-opacity hover:opacity-80"
+                >
+                  None
+                </button>
+                {extrasOptions.map((opt) => (
                   <button
-                    key={e}
+                    key={opt.id}
                     type="button"
                     role="option"
-                    onClick={() => updateServing(idx, { extras: e, extrasOpen: false })}
-                    className="flex w-full items-center justify-between gap-3 bg-transparent text-left text-sm text-foreground transition-opacity hover:opacity-80"
+                    tabIndex={-1}
+                    aria-selected={serving.extrasId === opt.id}
+                    onPointerDown={(e) =>
+                      modifierOptionPick(
+                        e,
+                        idx,
+                        'extras',
+                        serving.extrasId === opt.id ? null : opt,
+                      )
+                    }
+                    className="w-full shrink-0 bg-transparent text-left text-sm text-foreground transition-opacity hover:opacity-80"
                   >
-                    <span>{e}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">₦{extrasPriceMap[e].toLocaleString()}</span>
+                    {opt.label}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.extras ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
-            Cost: ₦{extrasPrice.toLocaleString()}
+          <p className={`mt-1 text-right text-xs ${serving.extrasLabel ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
+            {serving.extrasLabel ? `Cost: ₦${extrasPrice.toLocaleString()}` : 'Cost: ₦0'}
           </p>
         </div>
+        )}
 
         {/* Remove button for additional servings */}
         {isExtra && (
@@ -349,13 +597,12 @@ const MealDetails: React.FC = () => {
 
           {/* Sheet content */}
           <div
+            ref={sheetScrollRef}
             className={`flex-1 min-h-0 ${responsivePx} bg-background rounded-t-4xl ${
               fromRestaurantContext && !sheetExpanded
                 ? 'overflow-y-hidden'
-                : anyDropdownOpen
-                  ? 'overflow-visible'
-                  : 'overflow-y-auto'
-            }`}
+                : 'overflow-y-auto overscroll-y-contain'
+            } ${sheetExpanded ? 'pb-6' : ''}`}
           >
             {/* Meal info card */}
             <div className="flex items-start justify-between mb-1 pt-4">
@@ -394,7 +641,12 @@ const MealDetails: React.FC = () => {
                 className={!sheetExpanded ? 'pointer-events-none select-none opacity-50' : undefined}
                 aria-hidden={!sheetExpanded}
               >
-                {/* Render all servings */}
+                {modifiersLoading && (
+                  <p className="mb-4 text-sm text-muted-foreground">Loading options…</p>
+                )}
+                {!modifiersLoading && modifiersNote && (
+                  <p className="mb-4 text-sm text-muted-foreground">{modifiersNote}</p>
+                )}
                 {servings.map((serving, idx) => renderServing(serving, idx))}
 
                 {/* Add another serving button */}
@@ -415,19 +667,28 @@ const MealDetails: React.FC = () => {
               <div className="mb-4">
                 <h3 className="text-foreground text-lg font-light mb-2">Size Options:</h3>
                 <div className="flex gap-3">
-                  {sizeOptions.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`flex-1 py-2 rounded-full text-xs font-light transition-all ${
-                        selectedSize === size
-                          ? 'bg-primary border border-primary text-primary-foreground'
-                          : 'bg-transparent border border-primary text-muted-foreground'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {SIZE_LABELS.map((label) => {
+                    const opt = sizeByLabel.get(label.toLowerCase());
+                    const available = Boolean(opt) && !modifiersLoading;
+                    const selected = available && selectedSizeId === opt?.id;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        disabled={!available}
+                        onClick={() => opt && setSelectedSizeId(opt.id)}
+                        className={`flex-1 py-2 rounded-full text-xs font-light transition-all ${
+                          !available
+                            ? 'cursor-not-allowed border border-muted-foreground/35 bg-transparent text-muted-foreground'
+                            : selected
+                              ? 'bg-primary border border-primary text-primary-foreground'
+                              : 'bg-transparent border border-primary text-muted-foreground'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -452,17 +713,27 @@ const MealDetails: React.FC = () => {
           </div>
         </div>
 
+        {cartError && (
+          <p className={`${responsivePx} text-sm text-red-400`}>{cartError}</p>
+        )}
+
         {/* Bottom Buttons */}
         <div className={`${responsivePx} pb-6 pt-3 flex gap-3 flex-shrink-0`}>
           <Button
             variant="primary"
             className={`flex-1 ${addedToCart ? '!bg-transparent border-2 border-primary !text-primary' : ''}`}
-            onClick={() => setAddedToCart(!addedToCart)}
+            disabled={orderBusy}
+            onClick={handleAddToCart}
           >
             Add to Cart
           </Button>
-          <Button variant="accent" className="flex-1">
-            Order now
+          <Button
+            variant="accent"
+            className="flex-1"
+            disabled={orderBusy}
+            onClick={handleOrderNow}
+          >
+            {orderBusy ? 'Please wait…' : 'Order now'}
           </Button>
         </div>
       </div>

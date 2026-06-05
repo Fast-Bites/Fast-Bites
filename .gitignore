@@ -41,3 +41,11 @@ venv/
 # all pycache files in any folder
 **/__pycache__/
 **/*.py[cod]   
+
+**/docs/**
+/docs
+/docs/*
+
+**/scripts/**
+/scripts
+/scripts/*

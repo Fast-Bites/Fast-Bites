@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { auth } from '../lib/api';
 import type { MenuItemWithRestaurant } from '../lib/api';
+import {
+  fetchCartMenuItemIds,
+  quickAddToCart,
+  removeMenuItemFromCart,
+} from '../lib/cartApi';
 import { formatDeliveryTime } from '../lib/formatDeliveryTime';
 import { responsivePx, responsivePt } from '../constants/responsive';
 import { PROFILE_AVATAR_IMAGE } from '../constants/profileAvatar';
@@ -21,6 +26,8 @@ interface MealDisplay {
   id: string;
   name: string;
   restaurant: string;
+  restaurant_id?: string;
+  unitPrice: number;
   time: string;
   price: string;
   image: string;
@@ -63,6 +70,8 @@ const Home: React.FC = () => {
           id: item.id,
           name: item.name,
           restaurant: item.restaurant_name ? `From ${item.restaurant_name}` : 'From Restaurant',
+          restaurant_id: item.restaurant_id,
+          unitPrice: item.price,
           time: formatDeliveryTime(item.delivery_time),
           price: `₦${item.price.toLocaleString()}`,
           // Use image_url from DB or random placeholder
@@ -71,6 +80,9 @@ const Home: React.FC = () => {
         setMeals(formattedMeals);
       }
       setLoading(false);
+
+      const cartIds = await fetchCartMenuItemIds();
+      setSelectedMeals(cartIds);
     };
     fetchData();
   }, []);
@@ -97,18 +109,33 @@ const Home: React.FC = () => {
     cartTimerRef.current = setTimeout(() => setCartMessage(null), 2000);
   };
 
-  const toggleMealSelection = (mealId: string) => {
-    setSelectedMeals(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(mealId)) {
-        newSet.delete(mealId);
-        showCartNotification('removed');
-      } else {
-        newSet.add(mealId);
-        showCartNotification('added');
-      }
-      return newSet;
+  const toggleMealSelection = async (e: React.MouseEvent, meal: MealDisplay) => {
+    e.stopPropagation();
+    const isSelected = selectedMeals.has(meal.id);
+
+    if (isSelected) {
+      const result = await removeMenuItemFromCart(meal.id);
+      if (!result.ok) return;
+      setSelectedMeals((prev) => {
+        const next = new Set(prev);
+        next.delete(meal.id);
+        return next;
+      });
+      showCartNotification('removed');
+      return;
+    }
+
+    if (!meal.restaurant_id) return;
+    const result = await quickAddToCart({
+      restaurant_id: meal.restaurant_id,
+      menu_item_id: meal.id,
+      name: meal.name,
+      unit_price: meal.unitPrice,
+      image_url: meal.image,
     });
+    if (!result.ok) return;
+    setSelectedMeals((prev) => new Set(prev).add(meal.id));
+    showCartNotification('added');
   };
 
   const closeDeleteAccountModal = () => {
@@ -256,10 +283,7 @@ const Home: React.FC = () => {
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-foreground font-bold text-base">{meal.price}</span>
                     <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMealSelection(meal.id);
-                      }}
+                      onClick={(e) => toggleMealSelection(e, meal)}
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                         selectedMeals.has(meal.id)
                           ? 'bg-transparent border-2 border-primary'

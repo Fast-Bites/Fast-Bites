@@ -3,7 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { MdPhone } from 'react-icons/md';
 import SupportMessageBar from '../components/SupportMessageBar';
-import { pickRandomSupportReply } from '../constants/supportAutoReplies';
+import {
+  fetchSupportMessages,
+  sendSupportMessage,
+  type SupportMessageDto,
+} from '../lib/supportApi';
 import { SUPPORT_AVATAR_SRC } from '../constants/supportUi';
 import { responsivePx } from '../constants/responsive';
 
@@ -18,12 +22,6 @@ interface ChatMessage {
 
 function sameCalendarDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
-}
-
-function newMsgId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function showBubbleTail(prev: ChatMessage | undefined, msg: ChatMessage): boolean {
@@ -138,9 +136,28 @@ const SupportChat = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const replyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const mapDto = (m: SupportMessageDto): ChatMessage => ({
+    id: m.id,
+    text: m.body,
+    isUser: m.sender_type === 'user',
+    createdAt: new Date(m.created_at),
+  });
+
+  const reloadMessages = useCallback(async () => {
+    if (!chatId) return;
+    const { messages: rows, error } = await fetchSupportMessages(chatId);
+    if (error) {
+      setLoadError('Messages unavailable — sign in and connect to the API.');
+      setMessages([]);
+      return;
+    }
+    setLoadError(null);
+    setMessages(rows.map(mapDto));
+  }, [chatId]);
 
   const dateLabel = new Date().toLocaleDateString('en-US', {
     month: 'long',
@@ -148,47 +165,26 @@ const SupportChat = () => {
     year: 'numeric'
   });
 
-  const clearReplyTimer = useCallback(() => {
-    if (replyTimeoutRef.current != null) {
-      clearTimeout(replyTimeoutRef.current);
-      replyTimeoutRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => () => clearReplyTimer(), [clearReplyTimer]);
+  useEffect(() => {
+    reloadMessages();
+  }, [reloadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || !chatId) return;
 
-    const userMsg: ChatMessage = {
-      id: newMsgId(),
-      text,
-      isUser: true,
-      createdAt: new Date()
-    };
-
-    setMessages((m) => [...m, userMsg]);
     setDraft('');
-
-    clearReplyTimer();
-    replyTimeoutRef.current = setTimeout(() => {
-      replyTimeoutRef.current = null;
-      setMessages((m) => [
-        ...m,
-        {
-          id: newMsgId(),
-          text: pickRandomSupportReply(),
-          isUser: false,
-          createdAt: new Date()
-        }
-      ]);
-    }, 10_000);
-  }, [draft, clearReplyTimer]);
+    const { ok } = await sendSupportMessage(chatId, text);
+    if (!ok) {
+      setLoadError('Could not send message. Try again.');
+      return;
+    }
+    await reloadMessages();
+  }, [draft, chatId, reloadMessages]);
 
   return (
     <div className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] min-h-0 flex-col overflow-x-hidden overflow-y-hidden bg-background font-[var(--font-poppins)] text-foreground">
@@ -240,6 +236,9 @@ const SupportChat = () => {
               </div>
             </div>
             <span className="sr-only">Conversation {chatId ?? ''}</span>
+            {loadError && messages.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">{loadError}</p>
+            )}
             {messages.map((msg, i) => {
               const prev = i > 0 ? messages[i - 1] : undefined;
               const tail = showBubbleTail(prev, msg);

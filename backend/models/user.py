@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Date, Text
+from sqlalchemy import Column, String, DateTime, Date, Text, Float
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from database import Base
@@ -23,6 +23,8 @@ class User(Base):
     address = Column(Text)
     city = Column(String(100))
     state = Column(String(100))
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     
     # Timestamps
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

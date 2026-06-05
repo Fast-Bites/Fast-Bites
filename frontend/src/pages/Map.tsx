@@ -156,6 +156,8 @@ const Map: React.FC = () => {
       address: selectedLocation.address,
       city: selectedLocation.city,
       state: selectedLocation.state,
+      latitude: selectedLocation.lat,
+      longitude: selectedLocation.lng,
     });
 
     setSaving(false);

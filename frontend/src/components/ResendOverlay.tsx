@@ -111,11 +111,6 @@ const ResendOverlay: React.FC<ResendOverlayProps> = ({
             </p>
           )}
         </div>
-
-        {/* Tap to close — mt-4 = gap under card; increase for more space */}
-        <p className="mt-4 text-xs text-muted-foreground">
-          Tap anywhere to close
-        </p>
       </div>
     </div>
   );

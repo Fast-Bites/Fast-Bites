@@ -1,11 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import api from '../lib/api';
+import { fetchWalletSummary, fetchWalletTransactions } from '../lib/walletApi';
 import BottomNav from '../components/BottomNav';
 import { responsivePx } from '../constants/responsive';
 import { PROFILE_AVATAR_IMAGE } from '../constants/profileAvatar';
-import { WALLET_TRANSACTIONS, WALLET_TX_ICON_DOWN } from '../constants/walletTransactions';
+import {
+  WALLET_BALANCE_UNAVAILABLE,
+  WALLET_TX_EMPTY_MESSAGE,
+  WALLET_TX_ICON_DOWN,
+} from '../constants/walletTransactions';
+import type { WalletTransaction } from '../constants/walletTransactions';
 import WalletTransactionRow from '../components/WalletTransactionRow';
 import WalletDepositFromPanel from '../components/WalletDepositFromPanel';
 import OverlayModalBackdropLayer from '../components/OverlayModalBackdropLayer';
@@ -13,7 +19,6 @@ import OverlayModalBackdropLayer from '../components/OverlayModalBackdropLayer';
 interface UserProfile {
   first_name?: string;
   last_name?: string;
-  /** If API returns a custom photo, use it; otherwise same default as Home. */
   profile_image?: string;
 }
 
@@ -21,21 +26,58 @@ const Wallet: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [depositExpanded, setDepositExpanded] = useState(false);
-  const balance = 23600;
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balanceNote, setBalanceNote] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [txNote, setTxNote] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadWallet = useCallback(async () => {
+    setLoading(true);
+    setBalanceNote(null);
+    setTxNote(null);
+
+    const [summaryRes, txRes] = await Promise.all([
+      fetchWalletSummary(),
+      fetchWalletTransactions(5),
+    ]);
+
+    if (summaryRes.error || !summaryRes.summary) {
+      setBalance(null);
+      setBalanceNote('Balance unavailable — connect to the API or sign in.');
+    } else {
+      setBalance(summaryRes.summary.balance);
+    }
+
+    if (txRes.error) {
+      setTransactions([]);
+      setTxNote('Transactions unavailable — connect to the API or sign in.');
+    } else {
+      setTransactions(txRes.transactions);
+      if (txRes.transactions.length === 0) {
+        setTxNote(WALLET_TX_EMPTY_MESSAGE);
+      }
+    }
+
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     api.getProfile().then(({ data }) => {
       if (data) setUser(data as UserProfile);
     });
-  }, []);
+    loadWallet();
+  }, [loadWallet]);
 
   const fullName = user
-    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'John Doe'
-    : 'John Doe';
+    ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Guest'
+    : 'Guest';
+
+  const balanceDisplay =
+    balance !== null ? `₦${balance.toLocaleString()}` : WALLET_BALANCE_UNAVAILABLE;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-background pb-28 font-[var(--font-poppins)]">
-      {/* Orange wallet background — covers ~3/5 */}
       <div
         className="absolute inset-x-0 top-0 h-[60vh] bg-cover bg-center"
         style={{ backgroundImage: "url('/assets/cart Background.png')" }}
@@ -45,7 +87,6 @@ const Wallet: React.FC = () => {
       <div
         className={`relative shrink-0 ${responsivePx} pt-10${depositExpanded ? ' z-40' : ''}`}
       >
-        {/* User greeting */}
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 overflow-hidden rounded-full border border-foreground/30">
             <img
@@ -60,15 +101,14 @@ const Wallet: React.FC = () => {
           </div>
         </div>
 
-        {/* Balance */}
         <div className="mt-14 flex flex-col items-center">
           <p className="text-xs text-foreground/80">Your balance</p>
-          <p className="mt-1 text-4xl font-semibold text-foreground">
-            ₦{balance.toLocaleString()}
-          </p>
+          <p className="mt-1 text-4xl font-semibold text-foreground">{balanceDisplay}</p>
+          {balanceNote ? (
+            <p className="mt-2 max-w-xs text-center text-xs text-muted-foreground">{balanceNote}</p>
+          ) : null}
         </div>
 
-        {/* Deposit — expanded panel is absolute so flow below does not shift */}
         <div className="relative">
           <div className="relative mt-12 h-12 w-full">
             {!depositExpanded ? (
@@ -95,7 +135,6 @@ const Wallet: React.FC = () => {
             )}
           </div>
 
-          {/* Add new card — keep layout space when expanded so nothing below moves */}
           <button
             type="button"
             onClick={() => navigate('/wallet/add-card')}
@@ -115,7 +154,6 @@ const Wallet: React.FC = () => {
         </div>
       )}
 
-      {/* Transactions panel — flex-1 so #111111 fills viewport below the cards */}
       <div
         className={`relative mt-8 flex flex-1 flex-col rounded-t-3xl bg-[#111111] ${responsivePx} pt-6 pb-6`}
       >
@@ -130,11 +168,17 @@ const Wallet: React.FC = () => {
           </button>
         </div>
 
-        <div className="space-y-3">
-          {WALLET_TRANSACTIONS.map((tx) => (
-            <WalletTransactionRow key={tx.id} tx={tx} variant="card" />
-          ))}
-        </div>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading transactions…</p>
+        ) : transactions.length > 0 ? (
+          <div className="space-y-3">
+            {transactions.map((tx) => (
+              <WalletTransactionRow key={tx.id} tx={tx} variant="card" />
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">{txNote ?? WALLET_TX_EMPTY_MESSAGE}</p>
+        )}
       </div>
 
       <BottomNav />

@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  deleteCartItem,
+  deleteCartRestaurant,
+  fetchCart,
+  updateCartItemQuantity,
+  type RestaurantCartDto,
+} from '../lib/cartApi';
+import { createOrderFromCart } from '../lib/ordersApi';
 import { Plus, Minus, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
@@ -24,34 +32,40 @@ interface RestaurantOrder {
   items: CartItem[];
 }
 
-/* ── Dummy data ────────────────────────────────────── */
-const DUMMY_ORDERS: RestaurantOrder[] = [
-  {
-    id: 'r1',
-    name: 'Chicken Republic',
-    logo: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png',
-    items: [
-      { id: 'i1', name: 'Rice', description: 'Properly cooked plain local rice', price: 5000, quantity: 1, image: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', section: 'main' },
-      { id: 'i2', name: 'Rice (+1)', description: 'Extra portion of local rice', price: 5000, quantity: 1, image: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', section: 'main' },
-      { id: 'i3', name: 'Stew', description: 'Fresh tomato stew', price: 1500, quantity: 1, image: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', section: 'extras' },
-      { id: 'i4', name: 'Boiled Egg', description: 'Boiled egg garnish', price: 500, quantity: 2, image: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', section: 'extras' },
-      { id: 'i5', name: 'Chicken', description: 'Grilled chicken piece', price: 3000, quantity: 1, image: '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', section: 'extras' },
-    ],
-  },
-  {
-    id: 'r2',
-    name: "Domino's Pizza",
-    logo: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=80&h=80&fit=crop',
-    items: [
-      { id: 'i6', name: 'Blueberry Pancake', description: 'Fluffy cream filled blueberry pancake', price: 1500, quantity: 1, image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop', section: 'main' },
-    ],
-  },
-];
+function mapCartGroup(g: RestaurantCartDto): RestaurantOrder {
+  return {
+    id: g.id,
+    name: g.name,
+    logo: g.logo ?? '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png',
+    items: g.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      description: i.description ?? '',
+      price: i.price,
+      quantity: i.quantity,
+      image: i.image ?? '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png',
+      section: (i.section === 'extras' ? 'extras' : 'main') as 'main' | 'extras',
+    })),
+  };
+}
 
 /* ── Component ─────────────────────────────────────── */
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<RestaurantOrder[]>(DUMMY_ORDERS);
+  const [orders, setOrders] = useState<RestaurantOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const reloadCart = useCallback(async () => {
+    const { orders: rows } = await fetchCart();
+    setOrders(rows.map(mapCartGroup));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    reloadCart();
+  }, [reloadCart]);
   const [expandedRestaurant, setExpandedRestaurant] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ restaurantId: string; itemId: string } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
@@ -61,35 +75,41 @@ const Cart: React.FC = () => {
   const orderTotal = (items: CartItem[]) => items.reduce((s, i) => s + i.price * i.quantity, 0);
   const itemCount = (items: CartItem[]) => items.reduce((s, i) => s + i.quantity, 0);
 
-  const updateQuantity = (restaurantId: string, itemId: string, delta: number) => {
-    setOrders((prev) =>
-      prev.map((r) =>
-        r.id === restaurantId
-          ? { ...r, items: r.items.map((i) => (i.id === itemId ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)) }
-          : r,
-      ),
-    );
+  const updateQuantity = async (restaurantId: string, itemId: string, delta: number) => {
+    const group = orders.find((r) => r.id === restaurantId);
+    const item = group?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const nextQty = Math.max(1, item.quantity + delta);
+    await updateCartItemQuantity(itemId, nextQty);
+    await reloadCart();
   };
 
-  const deleteItem = () => {
+  const deleteItem = async () => {
     if (!deleteTarget) return;
-    setOrders((prev) =>
-      prev
-        .map((r) =>
-          r.id === deleteTarget.restaurantId
-            ? { ...r, items: r.items.filter((i) => i.id !== deleteTarget.itemId) }
-            : r,
-        )
-        .filter((r) => r.items.length > 0),
-    );
+    await deleteCartItem(deleteTarget.itemId);
     setDeleteTarget(null);
+    await reloadCart();
   };
 
-  const removeRestaurant = () => {
+  const removeRestaurant = async () => {
     if (!removeTarget) return;
-    setOrders((prev) => prev.filter((r) => r.id !== removeTarget));
+    await deleteCartRestaurant(removeTarget);
     setRemoveTarget(null);
     setExpandedRestaurant(null);
+    await reloadCart();
+  };
+
+  const proceedToOrder = async (restaurantId: string) => {
+    if (checkoutBusy) return;
+    setCheckoutError(null);
+    setCheckoutBusy(restaurantId);
+    const result = await createOrderFromCart(restaurantId);
+    setCheckoutBusy(null);
+    if (!result.ok) {
+      setCheckoutError(result.error ?? 'Could not start your order. Please try again.');
+      return;
+    }
+    navigate('/orders');
   };
 
   const detailRestaurant =
@@ -283,10 +303,16 @@ const Cart: React.FC = () => {
             </p>
             {detailRestaurant.items.map((item) => renderItemCard(detailRestaurant, item))}
           </>
+        ) : loading ? (
+          <div className="py-16 text-center text-muted-foreground">Loading cart…</div>
         ) : orders.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">Your cart is empty</div>
         ) : (
-          orders.map((restaurant) => (
+          <>
+            {checkoutError && (
+              <p className="mb-4 text-center text-sm text-red-400">{checkoutError}</p>
+            )}
+            {orders.map((restaurant) => (
             <div key={restaurant.id} className="mb-4 rounded-xl bg-overlay-panel-background px-2 py-5">
               <div className="mb-6 flex w-full min-w-0 items-center gap-3">
                 <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
@@ -312,10 +338,12 @@ const Cart: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => navigate('/orders')}
-                  className="flex-1 rounded-xl bg-popup-green py-3 text-sm text-black transition-opacity hover:opacity-90"
+                  type="button"
+                  disabled={checkoutBusy === restaurant.id}
+                  onClick={() => proceedToOrder(restaurant.id)}
+                  className="flex-1 rounded-xl bg-popup-green py-3 text-sm text-black transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
-                  Checkout
+                  {checkoutBusy === restaurant.id ? 'Please wait…' : 'Checkout'}
                 </button>
                 <button
                   onClick={() => setRemoveTarget(restaurant.id)}
@@ -325,7 +353,8 @@ const Cart: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))
+          ))}
+          </>
         )}
       </div>
 
@@ -334,8 +363,12 @@ const Cart: React.FC = () => {
         <div
           className={`fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-overlay-panel-background ${responsivePx} pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]`}
         >
-          <Button onClick={() => navigate('/orders')} variant="primary">
-            Proceed to order
+          <Button
+            onClick={() => detailRestaurant && proceedToOrder(detailRestaurant.id)}
+            variant="primary"
+            disabled={!detailRestaurant || checkoutBusy === detailRestaurant?.id}
+          >
+            {checkoutBusy === detailRestaurant?.id ? 'Please wait…' : 'Proceed to order'}
           </Button>
         </div>
       )}

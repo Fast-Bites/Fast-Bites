@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchSupportConversations, type ChatPreview } from '../lib/supportApi';
 import { Check, CheckCheck, MoreVertical, Search } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import SupportMessageBar from '../components/SupportMessageBar';
@@ -7,45 +8,6 @@ import { SUPPORT_AVATAR_SRC } from '../constants/supportUi';
 import { responsivePx } from '../constants/responsive';
 
 type PreviewKind = 'typing' | 'read' | 'sent' | 'unread';
-
-interface ChatPreview {
-  id: string;
-  kind: PreviewKind;
-  time: string;
-  /** When set, time label uses primary (e.g. “Yesterday”). */
-  timePrimary?: boolean;
-  preview: string;
-  unreadCount?: number;
-}
-
-const MOCK_CHATS: ChatPreview[] = [
-  {
-    id: '1',
-    kind: 'typing',
-    time: '12:15',
-    preview: 'Typing…'
-  },
-  {
-    id: '2',
-    kind: 'read',
-    time: '12:15',
-    preview: 'Hello, Good evening'
-  },
-  {
-    id: '3',
-    kind: 'sent',
-    time: '12:15',
-    preview: 'Hello, Good evening'
-  },
-  {
-    id: '4',
-    kind: 'unread',
-    time: 'Yesterday',
-    timePrimary: true,
-    preview: 'Hello, Good evening',
-    unreadCount: 1
-  }
-];
 
 function PreviewLine({ row }: { row: ChatPreview }) {
   if (row.kind === 'typing') {
@@ -85,8 +47,23 @@ const Support = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [draft, setDraft] = useState('');
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const [listNote, setListNote] = useState<string | null>(null);
 
-  const filtered = MOCK_CHATS.filter((c) =>
+  useEffect(() => {
+    fetchSupportConversations().then(({ conversations, error }) => {
+      setChats(conversations);
+      if (error) {
+        setListNote('Support unavailable — sign in and connect to the API.');
+      } else if (conversations.length === 0) {
+        setListNote('No support conversations yet.');
+      } else {
+        setListNote(null);
+      }
+    });
+  }, []);
+
+  const filtered = chats.filter((c) =>
     query.trim() ? c.preview.toLowerCase().includes(query.toLowerCase()) : true
   );
 
@@ -119,6 +96,9 @@ const Support = () => {
       </div>
 
       <div className={`flex-1 overflow-y-auto ${responsivePx} pb-36 pt-2`}>
+        {listNote && filtered.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">{listNote}</p>
+        )}
         <div className="divide-y divide-muted/10">
           {filtered.map((row) => (
             <button

@@ -2,7 +2,15 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from routers import profile_router, menu_router
+from routers import (
+    profile_router,
+    menu_router,
+    wallet_router,
+    payments_router,
+    cart_router,
+    orders_router,
+    support_router,
+)
 from database import init_db
 from config import settings
 
@@ -29,6 +37,11 @@ app.add_middleware(
 
 app.include_router(profile_router)
 app.include_router(menu_router)
+app.include_router(wallet_router)
+app.include_router(payments_router)
+app.include_router(cart_router)
+app.include_router(orders_router)
+app.include_router(support_router)
 
 @app.get("/")
 async def root():

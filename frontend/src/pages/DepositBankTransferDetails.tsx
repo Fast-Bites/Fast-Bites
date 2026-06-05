@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FiCopy } from 'react-icons/fi';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
 import { responsivePx } from '../constants/responsive';
+import { createDeposit, fetchDepositAccount, type DepositAccountInfo } from '../lib/paymentsApi';
 
-const transferDetails = {
-  owner: 'John Doe',
-  walletId: '898JUE376E3Y7731',
-  gateway: 'Paystack',
-  accountNumber: '4714565146',
-  bankName: 'Paystack Titan',
-  recipient: 'PAYMENT CHECKOUT'
-};
+type BankTransferState = { amount?: number };
 
 function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
@@ -25,12 +19,50 @@ function Row({ label, value, children }: { label: string; value?: string; childr
 
 const DepositBankTransferDetails = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const amount = (location.state as BankTransferState | null)?.amount ?? 0;
   const [copied, setCopied] = useState(false);
+  const [account, setAccount] = useState<DepositAccountInfo | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+
+  const loadAccount = useCallback(async () => {
+    const { account: info, error } = await fetchDepositAccount();
+    if (error || !info) {
+      setAccount(null);
+      setNote('Transfer details unavailable — sign in or configure a deposit account.');
+      return;
+    }
+    setAccount(info);
+    setNote(null);
+  }, []);
+
+  useEffect(() => {
+    loadAccount();
+  }, [loadAccount]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(transferDetails.accountNumber);
+    if (!account) return;
+    navigator.clipboard.writeText(account.account_number);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTransferred = async () => {
+    if (amount <= 0) {
+      setTransferError('Enter a valid amount on the previous screen.');
+      return;
+    }
+    setSubmitting(true);
+    setTransferError(null);
+    const result = await createDeposit('bank', amount);
+    setSubmitting(false);
+    if (!result.ok) {
+      setTransferError(result.error ?? 'Could not record deposit. Sign in and try again.');
+      return;
+    }
+    navigate('/deposit-success', { state: { amount, balance: result.balance } });
   };
 
   return (
@@ -45,17 +77,25 @@ const DepositBankTransferDetails = () => {
       <div className="h-25" />
 
       <div className={`flex flex-1 flex-col ${responsivePx} mt-6 pb-36`}>
+        {amount > 0 && (
+          <p className="mb-4 text-lg font-semibold text-foreground">
+            Amount: ₦{amount.toLocaleString('en-NG')}
+          </p>
+        )}
+        {note && <p className="mb-4 text-sm text-muted-foreground">{note}</p>}
+        {transferError && <p className="mb-4 text-sm text-red-400">{transferError}</p>}
+        {account && (
         <div className="rounded-xl bg-[#2a2a2a] px-5 py-8 text-white">
           <div className="mb-4 border-b border-white pb-1">
             <h2 className="text-lg font-semibold text-white">Wallet</h2>
           </div>
           <div>
-            <Row label="Wallet owner" value={transferDetails.owner} />
-            <Row label="Wallet ID" value={transferDetails.walletId} />
-            <Row label="Payment Gateway" value={transferDetails.gateway} />
+            <Row label="Wallet owner" value={account.owner_name} />
+            <Row label="Wallet ID" value={account.wallet_id} />
+            <Row label="Payment Gateway" value={account.gateway} />
             <Row label="Account number">
               <div className="flex items-center gap-2">
-                <span className="text-foreground">{transferDetails.accountNumber}</span>
+                <span className="text-foreground">{account.account_number}</span>
                 <button
                   type="button"
                   onClick={handleCopy}
@@ -66,17 +106,18 @@ const DepositBankTransferDetails = () => {
                 </button>
               </div>
             </Row>
-            <Row label="Bank name" value={transferDetails.bankName} />
-            <Row label="Recipient" value={transferDetails.recipient} />
+            {account.bank_name && <Row label="Bank name" value={account.bank_name} />}
+            {account.recipient_name && <Row label="Recipient" value={account.recipient_name} />}
           </div>
           {copied && <p className="mt-2 text-right text-xs text-primary">Copied!</p>}
         </div>
+        )}
       </div>
 
       <div
         className={`fixed bottom-0 left-0 right-0 z-40 bg-black ${responsivePx} pb-[max(1rem,env(safe-area-inset-bottom))] pt-3`}
       >
-        <Button type="button" variant="primary" onClick={() => navigate('/deposit-success')}>
+        <Button type="button" variant="primary" disabled={submitting} onClick={handleTransferred}>
           I&apos;ve transferred
         </Button>
       </div>

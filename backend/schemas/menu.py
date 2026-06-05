@@ -14,6 +14,11 @@ class RestaurantResponse(BaseModel):
     rating: Optional[float] = None
     is_open: Optional[bool] = True
     created_at: Optional[datetime] = None
+    # Enriched from restaurant_hours (list/detail endpoints)
+    is_open_now: Optional[bool] = None
+    hours_status: Optional[str] = None
+    operating_hours_text: Optional[str] = None
+    avg_delivery_minutes: Optional[int] = None
 
     class Config:
         from_attributes = True

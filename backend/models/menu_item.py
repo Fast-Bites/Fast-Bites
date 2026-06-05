@@ -18,4 +18,5 @@ class MenuItem(Base):
     is_available = Column(Boolean, default=True, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=True)
     delivery_time = Column(Integer, nullable=True)  # in minutes
+    category = Column(String(32), nullable=True)  # food | drinks
 

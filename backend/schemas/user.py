@@ -20,6 +20,8 @@ class UserUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class UserResponse(BaseModel):
     id: UUID
@@ -33,6 +35,8 @@ class UserResponse(BaseModel):
     address: Optional[str]
     city: Optional[str]
     state: Optional[str]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     
     class Config:
         from_attributes = True

@@ -169,9 +169,110 @@ export const api = {
   getMenuItems: (limit = 100, offset = 0) =>
     request<MenuItemWithRestaurant[]>(`/menu/items?limit=${limit}&offset=${offset}`),
 
+  getMenuItem: (itemId: string) =>
+    request<MenuItemWithRestaurant>(`/menu/items/${itemId}`),
+
   getRestaurants: (limit = 10, offset = 0) =>
     request<Restaurant[]>(`/menu/restaurants?limit=${limit}&offset=${offset}`),
+
+  getRestaurant: (restaurantId: string) =>
+    request<Restaurant>(`/menu/restaurants/${restaurantId}`),
+
+  getWalletSummary: () => request<WalletSummaryDto>('/wallet/summary', {}, true),
+
+  getWalletTransactions: (limit = 20) =>
+    request<{ transactions: WalletTransactionDto[] }>(
+      `/wallet/transactions?limit=${limit}`,
+      {},
+      true,
+    ),
+
+  createPaymentCard: (data: {
+    cardholder_name: string;
+    card_number: string;
+    exp_month: number;
+    exp_year: number;
+    save_details: boolean;
+  }) => request('/payments/cards', { method: 'POST', body: JSON.stringify(data) }, true),
+
+  getDepositAccount: () => request('/payments/deposit-account', {}, true),
+
+  createDeposit: (data: { method: string; amount: number; payment_card_id?: string }) =>
+    request('/payments/deposits', { method: 'POST', body: JSON.stringify(data) }, true),
+
+  getCart: () => request('/cart', {}, true),
+
+  addCartItem: (data: Record<string, unknown>) =>
+    request('/cart/items', { method: 'POST', body: JSON.stringify(data) }, true),
+
+  patchCartItem: (itemId: string, data: { quantity: number }) =>
+    request(`/cart/items/${itemId}`, { method: 'PATCH', body: JSON.stringify(data) }, true),
+
+  deleteCartItem: (itemId: string) =>
+    request(`/cart/items/${itemId}`, { method: 'DELETE' }, true),
+
+  deleteCartRestaurant: (restaurantId: string) =>
+    request(`/cart/restaurants/${restaurantId}`, { method: 'DELETE' }, true),
+
+  removeMenuItemFromCart: (menuItemId: string) =>
+    request(`/cart/menu-items/${menuItemId}`, { method: 'DELETE' }, true),
+
+  getOrderSummary: () => request('/orders/summary', {}, true),
+
+  createOrderFromCart: (restaurantId: string) =>
+    request<{ order_id: string }>(
+      '/orders/from-cart',
+      { method: 'POST', body: JSON.stringify({ restaurant_id: restaurantId }) },
+      true,
+    ),
+
+  confirmOrderCheckout: (orderId: string) =>
+    request<{ order_id: string; ok: boolean }>(
+      `/orders/${orderId}/checkout`,
+      { method: 'POST' },
+      true,
+    ),
+
+  getSupportConversations: () => request('/support/conversations', {}, true),
+
+  getSupportMessages: (conversationId: string) =>
+    request(`/support/conversations/${conversationId}/messages`, {}, true),
+
+  sendSupportMessage: (conversationId: string, data: { body: string }) =>
+    request(`/support/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, true),
+
+  getRestaurantMenuByCategory: (restaurantId: string, category: 'food' | 'drinks') =>
+    request<RestaurantMenuItemDto[]>(
+      `/menu/restaurants/${restaurantId}/items?category=${category}`,
+    ),
+
+  getRestaurantHours: (restaurantId: string) =>
+    request(`/menu/restaurants/${restaurantId}/hours`),
+
+  getMenuItemModifiers: (itemId: string) =>
+    request<{ groups: Array<{ id: string; name: string; options: Array<{ id: string; label: string; price_delta: number }> }> }>(
+      `/menu/items/${itemId}/modifiers`,
+    ),
 };
+
+interface WalletSummaryDto {
+  balance: number;
+  currency: string;
+  has_wallet: boolean;
+}
+
+interface WalletTransactionDto {
+  id: string;
+  type: string;
+  title: string;
+  amount: number;
+  is_positive: boolean;
+  status: string;
+  created_at: string;
+}
 
 // Types for menu
 export interface MenuItemWithRestaurant {
@@ -195,6 +296,19 @@ export interface Restaurant {
   image_url?: string;
   rating?: number;
   is_open?: boolean;
+  is_open_now?: boolean | null;
+  hours_status?: string | null;
+  operating_hours_text?: string | null;
+  avg_delivery_minutes?: number | null;
+}
+
+export interface RestaurantMenuItemDto {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  delivery_minutes?: number;
+  description?: string;
 }
 
 export default api;

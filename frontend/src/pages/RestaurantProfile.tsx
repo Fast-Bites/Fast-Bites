@@ -1,37 +1,37 @@
 import { useState, useEffect, useRef, type MouseEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { Restaurant } from '../lib/api';
+import api, { type Restaurant, type RestaurantMenuItemDto } from '../lib/api';
+import {
+  fetchCartMenuItemIds,
+  quickAddToCart,
+  removeMenuItemFromCart,
+} from '../lib/cartApi';
 import BackButton from '../components/BackButton';
 import ResendOverlay from '../components/ResendOverlay';
-import { operatingHoursMessage } from '../constants/operatingHours';
 import { responsivePx } from '../constants/responsive';
 import { formatDeliveryTime } from '../lib/formatDeliveryTime';
-import { isOpenForDisplay } from '../lib/restaurantDisplay';
+import {
+  restaurantIsOpen,
+  restaurantOperatingHoursText,
+} from '../lib/restaurantHours';
 
 interface MenuItem {
   id: string;
   name: string;
   price: number;
   image: string;
-  /** Minutes — displayed via formatDeliveryTime (same as Home) */
-  deliveryMinutes: number;
+  deliveryMinutes?: number;
 }
 
-const foodItems: MenuItem[] = [
-  { id: '1', name: 'Jollof Rice & Chicken', price: 3500, image: 'https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=300&h=200&fit=crop', deliveryMinutes: 25 },
-  { id: '2', name: 'Fried Rice Special', price: 4000, image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop', deliveryMinutes: 30 },
-  { id: '3', name: 'Grilled Chicken Platter', price: 5500, image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=300&h=200&fit=crop', deliveryMinutes: 35 },
-  { id: '4', name: 'Peppered Snail', price: 6000, image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop', deliveryMinutes: 22 },
-  { id: '5', name: 'Suya Meat', price: 3000, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop', deliveryMinutes: 18 },
-  { id: '6', name: 'Egusi Soup & Pounded Yam', price: 4500, image: 'https://images.unsplash.com/photo-1574484284002-952d92456975?w=300&h=200&fit=crop', deliveryMinutes: 80 },
-];
-
-const drinkItems: MenuItem[] = [
-  { id: '7', name: 'Chapman', price: 1500, image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop', deliveryMinutes: 8 },
-  { id: '8', name: 'Zobo Drink', price: 800, image: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=300&h=200&fit=crop', deliveryMinutes: 5 },
-  { id: '9', name: 'Fresh Orange Juice', price: 1200, image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=300&h=200&fit=crop', deliveryMinutes: 7 },
-  { id: '10', name: 'Smoothie Bowl', price: 2000, image: 'https://images.unsplash.com/photo-1502741224143-90386d7f8c82?w=300&h=200&fit=crop', deliveryMinutes: 12 },
-];
+function mapMenuDto(row: RestaurantMenuItemDto): MenuItem {
+  return {
+    id: row.id,
+    name: row.name,
+    price: row.price,
+    image: row.image ?? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop',
+    deliveryMinutes: row.delivery_minutes ?? undefined,
+  };
+}
 
 const RestaurantProfile = () => {
   const navigate = useNavigate();
@@ -41,6 +41,10 @@ const RestaurantProfile = () => {
   const [showHoursOverlay, setShowHoursOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
+  const [foodItems, setFoodItems] = useState<MenuItem[]>([]);
+  const [drinkItems, setDrinkItems] = useState<MenuItem[]>([]);
+  const [menuNote, setMenuNote] = useState<string | null>(null);
+  const [liveRestaurant, setLiveRestaurant] = useState<Restaurant | null>(null);
   const cartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -57,6 +61,31 @@ const RestaurantProfile = () => {
 
   // Get restaurant data from navigation state
   const restaurant: Restaurant | undefined = location.state?.restaurant;
+
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    api.getRestaurant(String(restaurant.id)).then((res) => {
+      if (res.data) setLiveRestaurant(res.data as Restaurant);
+    });
+    const loadMenu = async () => {
+      const [foodRes, drinksRes] = await Promise.all([
+        api.getRestaurantMenuByCategory(String(restaurant.id), 'food'),
+        api.getRestaurantMenuByCategory(String(restaurant.id), 'drinks'),
+      ]);
+      if (foodRes.error && drinksRes.error) {
+        setFoodItems([]);
+        setDrinkItems([]);
+        setMenuNote('Menu unavailable — connect to the API.');
+        return;
+      }
+      setMenuNote(null);
+      setFoodItems((foodRes.data ?? []).map(mapMenuDto));
+      setDrinkItems((drinksRes.data ?? []).map(mapMenuDto));
+      const cartIds = await fetchCartMenuItemIds();
+      setSelectedMeals(cartIds);
+    };
+    loadMenu();
+  }, [restaurant?.id]);
 
   // Fallback if no restaurant data passed
   if (!restaurant) {
@@ -81,19 +110,32 @@ const RestaurantProfile = () => {
     cartTimerRef.current = setTimeout(() => setCartMessage(null), 2000);
   };
 
-  const toggleMealSelection = (e: React.MouseEvent, mealId: string) => {
+  const toggleMealSelection = async (e: React.MouseEvent, item: MenuItem) => {
     e.stopPropagation();
-    setSelectedMeals((prev) => {
-      const next = new Set(prev);
-      if (next.has(mealId)) {
-        next.delete(mealId);
-        showCartNotification('removed');
-      } else {
-        next.add(mealId);
-        showCartNotification('added');
-      }
-      return next;
+    const isSelected = selectedMeals.has(item.id);
+
+    if (isSelected) {
+      const result = await removeMenuItemFromCart(item.id);
+      if (!result.ok) return;
+      setSelectedMeals((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      showCartNotification('removed');
+      return;
+    }
+
+    const result = await quickAddToCart({
+      restaurant_id: String(restaurant.id),
+      menu_item_id: item.id,
+      name: item.name,
+      unit_price: item.price,
+      image_url: item.image,
     });
+    if (!result.ok) return;
+    setSelectedMeals((prev) => new Set(prev).add(item.id));
+    showCartNotification('added');
   };
 
   const handleItemClick = (item: MenuItem) => {
@@ -113,8 +155,9 @@ const RestaurantProfile = () => {
     });
   };
 
+  const displayRestaurant = liveRestaurant ?? restaurant;
   const currentItems = activeTab === 'food' ? foodItems : drinkItems;
-  const isOpen = isOpenForDisplay(String(restaurant.id));
+  const isOpen = restaurantIsOpen(displayRestaurant);
 
   const toggleOperatingHours = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -154,7 +197,7 @@ const RestaurantProfile = () => {
                 <div className="flex flex-wrap items-center gap-x-2 text-xs">
                   <img src="/assets/pin 3.svg" alt="" className="h-4 w-4 shrink-0" />
                   <span className="min-w-0 max-w-full leading-snug text-muted-foreground">
-                    {restaurant.address || 'Address not available'}
+                    {displayRestaurant.address || 'Address not available'}
                   </span>
                   <span
                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${
@@ -166,7 +209,6 @@ const RestaurantProfile = () => {
                   >
                     {isOpen ? 'Open' : 'Closed'}
                   </span>
-                  
                   <button
                     type="button"
                     aria-label="Operating hours"
@@ -206,7 +248,16 @@ const RestaurantProfile = () => {
           </button>
         </div>
 
+        {menuNote && (
+          <p className="mb-4 text-sm text-muted-foreground">{menuNote}</p>
+        )}
+
         {/* Menu items — Home-style cards; time via formatDeliveryTime (single mins or hr + mins) */}
+        {currentItems.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            {activeTab === 'food' ? 'No food at the moment.' : 'No drinks at the moment.'}
+          </p>
+        ) : (
         <div className="grid grid-cols-2 min-[500px]:grid-cols-3 min-[700px]:grid-cols-4 gap-2 space-y-2 pb-8">
           {currentItems.map((item) => {
             const isSelected = selectedMeals.has(item.id);
@@ -235,7 +286,11 @@ const RestaurantProfile = () => {
                       alt="Time"
                       className="h-4 w-4"
                     />
-                    <span>{formatDeliveryTime(item.deliveryMinutes)}</span>
+                    <span>
+                      {item.deliveryMinutes != null
+                        ? formatDeliveryTime(item.deliveryMinutes)
+                        : 'Time not set'}
+                    </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-base font-bold text-foreground mt-2">
@@ -243,7 +298,7 @@ const RestaurantProfile = () => {
                     </span>
                     <button
                       type="button"
-                      onClick={(e) => toggleMealSelection(e, item.id)}
+                      onClick={(e) => toggleMealSelection(e, item)}
                       className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
                         isSelected
                           ? 'border-2 border-primary bg-transparent'
@@ -262,6 +317,7 @@ const RestaurantProfile = () => {
             );
           })}
         </div>
+        )}
       </div>
 
       <div
@@ -292,7 +348,7 @@ const RestaurantProfile = () => {
 
       <ResendOverlay
         visible={showHoursOverlay}
-        message={operatingHoursMessage}
+        message={restaurantOperatingHoursText(displayRestaurant)}
         onClose={() => setShowHoursOverlay(false)}
         type="warning"
         iconSrc="/assets/info 1.svg"

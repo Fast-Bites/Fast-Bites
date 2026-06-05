@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchOrderSummary, confirmOrderCheckout, type OrderTabItem, type TrackingStep } from '../lib/ordersApi';
 import { ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import Button from '../components/Button';
@@ -8,59 +9,7 @@ import TabSwitcher from '../components/TabSwitcher';
 import { responsivePx } from '../constants/responsive';
 
 /* ── Types ─────────────────────────────────────────── */
-interface OrderItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  quantity: number;
-  image: string;
-  restaurant: string;
-}
-
-interface TrackingStep {
-  label: string;
-  description: string;
-  time: string;
-  completed: boolean;
-  showView?: boolean;
-}
-
-/* ── Dummy data ────────────────────────────────────── */
-const DUMMY_ORDER_ITEMS: OrderItem[] = [
-  {
-    id: 'i1',
-    name: 'Rice',
-    description: 'Properly cooked plain local rice',
-    price: 5000,
-    quantity: 2,
-    image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop',
-    restaurant: 'Chicken Republic',
-  },
-  {
-    id: 'i2',
-    name: 'Blueberry Pancake',
-    description: 'Fluffy cream filled blueberry pancake',
-    price: 1500,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop',
-    restaurant: 'Chicken Republic',
-  },
-];
-
-const TRACKING_DELIVERY_TIME = '20 mins';
-
-const DEFAULT_DESCRIPTION = 'Your rider has arrived to pick up your order.';
-
-const DUMMY_TRACKING_STEPS: TrackingStep[] = [
-  { label: 'Ready!', description: 'Your order is ready to be picked up.', time: '9:45am', completed: true },
-  { label: 'Rider at the vendor.', description: DEFAULT_DESCRIPTION, time: '9:45am', completed: true },
-  { label: 'Order in transit', description: DEFAULT_DESCRIPTION, time: '-:--', completed: false, showView: true },
-  { label: 'Order has arrived', description: DEFAULT_DESCRIPTION, time: '-:--', completed: false },
-  { label: 'Delivered', description: DEFAULT_DESCRIPTION, time: '-:--', completed: false },
-];
-
-const DELIVERY_FEE = 1500;
+const DEFAULT_DELIVERY_FEE = 1500;
 
 const TABS = [
   { id: 'order', label: 'Order' },
@@ -71,16 +20,56 @@ const TABS = [
 const Order: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('order');
-  const [items, setItems] = useState<OrderItem[]>(DUMMY_ORDER_ITEMS);
+  const [items, setItems] = useState<OrderTabItem[]>([]);
+  const [deliveryFee, setDeliveryFee] = useState(DEFAULT_DELIVERY_FEE);
+  const [trackingDeliveryTime, setTrackingDeliveryTime] = useState('20 mins');
+  const [trackingSteps, setTrackingSteps] = useState<TrackingStep[]>([]);
+  const [hasOngoing, setHasOngoing] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [checkoutCompleteOpen, setCheckoutCompleteOpen] = useState(false);
   /** Ongoing tab: tracking timeline shown only after the summary card is tapped */
   const [ongoingTrackingOpen, setOngoingTrackingOpen] = useState(false);
 
+  const loadOrders = useCallback(async () => {
+    const { items: rows, deliveryFee: fee, ongoing, pendingOrderId: pendingId } = await fetchOrderSummary();
+    setItems(rows);
+    setDeliveryFee(fee);
+    setPendingOrderId(pendingId);
+    if (ongoing) {
+      setHasOngoing(true);
+      setTrackingDeliveryTime(ongoing.deliveryTime);
+      setTrackingSteps(ongoing.steps);
+    } else {
+      setHasOngoing(false);
+      setTrackingSteps([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const orderItemCount = items.reduce((s, i) => s + i.quantity, 0);
-  const total = subtotal + DELIVERY_FEE;
+  const total = subtotal + deliveryFee;
+
+  const handleCheckout = async () => {
+    if (checkoutBusy || !pendingOrderId) return;
+    setCheckoutError(null);
+    setCheckoutBusy(true);
+    const result = await confirmOrderCheckout(pendingOrderId);
+    setCheckoutBusy(false);
+    if (!result.ok) {
+      setCheckoutError(result.error ?? 'Could not complete checkout. Please try again.');
+      return;
+    }
+    await loadOrders();
+    setCheckoutCompleteOpen(true);
+  };
 
   const deleteItem = () => {
     if (!deleteTarget) return;
@@ -93,7 +82,7 @@ const Order: React.FC = () => {
 
   const itemHasMultiServingBreakdown = (qty: number) => qty > 1;
 
-  const renderItemName = (item: OrderItem) => {
+  const renderItemName = (item: OrderTabItem) => {
     if (item.quantity > 1) {
       return (
         <>
@@ -278,7 +267,7 @@ const Order: React.FC = () => {
         {/* ── Ongoing / Tracking Tab ─────────────── */}
         {activeTab === 'ongoing' && (
           <div className="mt-6">
-            {!firstItem ? (
+            {!hasOngoing ? (
               <div className="text-center text-muted-foreground py-16">No ongoing orders</div>
             ) : (
               <>
@@ -294,12 +283,14 @@ const Order: React.FC = () => {
                       <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
                         <img
                           src={ongoingRestaurantLogo}
-                          alt={firstItem.restaurant}
+                          alt={firstItem?.restaurant ?? 'Restaurant'}
                           className="h-full w-full object-cover"
                         />
                       </div>
                       <div className="min-w-0 flex-1 text-left">
-                        <h2 className="min-w-0 truncate text-base font-semibold text-foreground">{firstItem.restaurant}</h2>
+                        <h2 className="min-w-0 truncate text-base font-semibold text-foreground">
+                          {firstItem?.restaurant ?? 'Ongoing order'}
+                        </h2>
                         <p className="text-xs text-muted-foreground">
                           {orderItemCount} Items | ₦{subtotal.toLocaleString()}
                         </p>
@@ -322,12 +313,12 @@ const Order: React.FC = () => {
                 {ongoingTrackingOpen && (
                   <div className="-mx-4 mb-4 bg-black px-4 py-6 min-[574px]:-mx-6 min-[574px]:px-6">
                     <p className="text-sm text-muted-foreground/80 ml-3">Delivery time</p>
-                    <p className="text-xl font-bold text-foreground ml-3">{TRACKING_DELIVERY_TIME}</p>
+                    <p className="text-xl font-bold text-foreground ml-3">{trackingDeliveryTime}</p>
 
                     <ol className="relative mt-6">
                       <span aria-hidden className="absolute left-[11px] -top-3 h-3 w-0.5 bg-primary" />
-                      {DUMMY_TRACKING_STEPS.map((step, idx) => {
-                        const isLast = idx === DUMMY_TRACKING_STEPS.length - 1;
+                      {trackingSteps.map((step, idx) => {
+                        const isLast = idx === trackingSteps.length - 1;
                         return (
                           <li key={step.label} className="relative pb-6 pl-9">
                             {!isLast && (
@@ -394,15 +385,22 @@ const Order: React.FC = () => {
           </div>
           <div className="mb-3 flex justify-between text-xs">
             <span className="text-muted-foreground">Delivery fee</span>
-            <span className="text-muted-foreground">₦{DELIVERY_FEE.toLocaleString()}</span>
+            <span className="text-muted-foreground">₦{deliveryFee.toLocaleString()}</span>
           </div>
           <div className="flex justify-between border-t border-white/40 pt-3">
             <span className="text-xs font-semibold text-foreground">Total</span>
             <span className="text-xs font-semibold text-foreground">₦{total.toLocaleString()}</span>
             </div>
           <div className="mt-6">
-            <Button onClick={() => setCheckoutCompleteOpen(true)} variant="primary">
-              Checkout
+            {checkoutError && (
+              <p className="mb-3 text-center text-sm text-red-400">{checkoutError}</p>
+            )}
+            <Button
+              onClick={handleCheckout}
+              variant="primary"
+              disabled={checkoutBusy || !pendingOrderId}
+            >
+              {checkoutBusy ? 'Please wait…' : 'Checkout'}
             </Button>
           </div>
         </div>
