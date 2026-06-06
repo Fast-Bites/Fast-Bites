@@ -38,18 +38,27 @@ venv/
 *.env
 **/.env
 
-# all pycache files in any folder
+# every form of pycache__ files in anny folder
+
 **/__pycache__/
-**/*.py[cod]   
+**/__pycache__/*
+**/pycache/
+**/pycache/*
+
+# ignore all files with .pyc extension
+*.pyc
+
+# ignore all files with .pyo extension
+*.pyo
+
+# ignore all files with .pyd extension
+*.pyd
+
+# ignore all files with .pyi extension
+*.pyi
+
+# other utility scripts
+**/scripts/*
+**/scripts/**
 
 **/docs/**
-/docs
-/docs/*
-
-**/scripts/**
-/scripts
-/scripts/*
-
-**/pycache/**
-**/*.py[cod]
-**/__pycache__/

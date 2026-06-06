@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: hsl(0 0% 0%);
+  --color-foreground: hsl(0 0% 100%);
+  --color-primary: hsl(15 91% 47%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-accent: hsl(54 100% 50%);
+  --color-accent-foreground: hsl(0 0% 0%);
+  --color-muted: hsl(0 0% 40%);
+  --color-muted-foreground: hsl(0 0% 78%);
+  --color-surface: hsl(0 0% 12%);
+  --font-poppins: 'Poppins', sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-family: var(--font-poppins);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
