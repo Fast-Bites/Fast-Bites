@@ -58,7 +58,6 @@ venv/
 *.pyi
 
 # other utility scripts
-**/scripts/*
-**/scripts/**
+backend/scripts/
 
 **/docs/**
