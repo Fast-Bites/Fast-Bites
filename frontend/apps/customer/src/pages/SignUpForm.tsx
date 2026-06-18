@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import { auth } from '../lib/api';
 import { getRememberMeCheckboxPreference, persistRememberMeCheckboxPreference } from '../lib/supabase';
+import { getSelectedRole, isValidRole } from '../lib/activeRole';
+import {
+  finalizeRestaurantAuth,
+  isRestaurantRole,
+  signupRedirectUrlForRole,
+} from '../lib/vendorRedirect';
+import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
 
 const SignUpForm: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +22,13 @@ const SignUpForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSignInLink, setShowSignInLink] = useState(false);
+
+  useEffect(() => {
+    const role = getSelectedRole();
+    if (!role || !isValidRole(role)) {
+      navigate('/role-selection', { replace: true });
+    }
+  }, [navigate]);
 
   const isPasswordValid = password.length >= 6;
 
@@ -27,13 +41,16 @@ const SignUpForm: React.FC = () => {
     setShowSignInLink(false);
 
     // Sign up with Supabase Auth
-    const { data, error: authError } = await auth.signup(email, password, rememberMe);
-
-    console.log('Signup response:', { data, authError }); // Debug
-
-    setLoading(false);
+    const selectedRole = getSelectedRole();
+    const { data, error: authError } = await auth.signup(
+      email,
+      password,
+      rememberMe,
+      signupRedirectUrlForRole(selectedRole),
+    );
 
     if (authError) {
+      setLoading(false);
       const lower = authError.toLowerCase();
       if (
         lower.includes('already registered') ||
@@ -68,11 +85,24 @@ const SignUpForm: React.FC = () => {
         return;
       }
 
-      // No confirmation needed - go straight to profile
+      // No confirmation needed - continue signup
+      if (isRestaurantRole(selectedRole)) {
+        const result = await finalizeRestaurantAuth();
+        if (!result.ok) {
+          setLoading(false);
+          setError(result.error || 'Could not continue to vendor portal.');
+        }
+        return;
+      }
+
       navigate('/signup-form-2');
     }
   };
 
+
+  if (loading) {
+    return <FullScreenLogoLoader />;
+  }
 
   return (
     <PageLayout showHeader={true} showFooter={true}>

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { ChefHat, Clock3, LayoutDashboard, LogOut, UtensilsCrossed } from 'lucide-react';
 import { vendorAuth } from '@/lib/api';
+import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -20,7 +21,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export default function VendorLayout() {
   const handleSignOut = async () => {
     await vendorAuth.signOut();
-    window.location.assign('/vendor/sign-in');
+    redirectToCustomerRestaurantSignIn();
   };
 
   return (

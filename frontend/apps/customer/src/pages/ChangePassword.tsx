@@ -4,6 +4,7 @@ import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import { auth, api } from '../lib/api';
+import { CUSTOMER_ROLE } from '../lib/activeRole';
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const ChangePassword: React.FC = () => {
 
   useEffect(() => {
     const fetchUserName = async () => {
-      const { data: profile } = await api.getProfile() as { 
+      const { data: profile } = await api.getProfile(CUSTOMER_ROLE) as {
         data?: { first_name?: string; last_name?: string } 
       };
       if (profile?.first_name) {
@@ -49,7 +50,7 @@ const ChangePassword: React.FC = () => {
     }
 
     // Success - navigate to sign in
-    navigate('/signin-form');
+    navigate('/role-selection');
   };
 
   return (

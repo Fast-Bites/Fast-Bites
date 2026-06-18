@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
 
 class UserCreate(BaseModel):
     first_name: str
@@ -40,3 +40,6 @@ class UserResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class UserRolesResponse(BaseModel):
+    roles: List[str]

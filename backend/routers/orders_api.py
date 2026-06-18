@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,20 +18,18 @@ from schemas.orders_api import (
     TrackingStepResponse,
 )
 from services.jwt_auth import get_current_user
-from services.order_checkout import confirm_order_checkout, create_order_from_cart
+from services.order_checkout import (
+    confirm_order_checkout,
+    create_order_from_cart,
+    expire_stale_orders,
+    format_order_step_time,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 ACTIVE_STATUSES = ("pending", "confirmed", "preparing", "in_transit")
 ONGOING_STATUSES = ("confirmed", "preparing", "in_transit")
-
-
-def format_step_time(completed_at: datetime | None, completed: bool) -> str:
-    if completed and completed_at:
-        t = completed_at.strftime("%I:%M%p").lstrip("0").lower()
-        return t
-    return "-:--"
 
 
 @router.get("/summary", response_model=OrderSummaryResponse)
@@ -42,6 +39,8 @@ async def order_summary(
 ):
     try:
         user_id = UUID(current_user["id"])
+        await expire_stale_orders(db, user_id)
+
         order_result = await db.execute(
             select(Order)
             .where(Order.user_id == user_id)
@@ -93,7 +92,12 @@ async def order_summary(
                     TrackingStepResponse(
                         label=s.label,
                         description=s.description,
-                        time=format_step_time(s.completed_at, s.is_completed),
+                        time=format_order_step_time(
+                            s.completed_at,
+                            bool(s.is_completed),
+                            order_created_at=order.created_at,
+                            step_order=s.step_order,
+                        ),
                         completed=bool(s.is_completed),
                         show_view=bool(s.show_view_action),
                     )

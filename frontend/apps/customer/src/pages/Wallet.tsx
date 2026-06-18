@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import api from '../lib/api';
+import { CUSTOMER_ROLE } from '../lib/activeRole';
 import { fetchWalletSummary, fetchWalletTransactions } from '../lib/walletApi';
 import BottomNav from '../components/BottomNav';
 import { responsivePx } from '../constants/responsive';
@@ -63,7 +64,7 @@ const Wallet: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    api.getProfile().then(({ data }) => {
+    api.getProfile(CUSTOMER_ROLE).then(({ data }) => {
       if (data) setUser(data as UserProfile);
     });
     loadWallet();

@@ -6,6 +6,7 @@ import BackButton from '../components/BackButton';
 import LocationSearchInput from "../components/LocationSearchInput";
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import api from '../lib/api';
+import { resolveCustomerProfileRole } from '../lib/activeRole';
 import { responsivePx, responsivePt, responsivePy } from '../constants/responsive';
 
 const mapContainerStyle = {
@@ -158,7 +159,7 @@ const Map: React.FC = () => {
       state: selectedLocation.state,
       latitude: selectedLocation.lat,
       longitude: selectedLocation.lng,
-    });
+    }, resolveCustomerProfileRole());
 
     setSaving(false);
 

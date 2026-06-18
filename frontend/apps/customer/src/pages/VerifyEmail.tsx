@@ -5,6 +5,8 @@ import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import ResendOverlay from '../components/ResendOverlay';
 import { auth } from '../lib/api';
+import { finalizeRestaurantAuth, getSelectedRole, isRestaurantRole } from '../lib/vendorRedirect';
+import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
 
 // Helper to extract seconds from error message like "...after 58 seconds"
 const extractSecondsFromError = (error: string): number | null => {
@@ -39,9 +41,8 @@ const VerifyEmail: React.FC = () => {
 
     const { data, error: verifyError } = await auth.verifyOtp(email, otpCode);
 
-    setLoading(false);
-
     if (verifyError) {
+      setLoading(false);
       setError(verifyError);
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
@@ -49,7 +50,15 @@ const VerifyEmail: React.FC = () => {
     }
 
     if (data) {
-      // Verified! Go to complete profile
+      if (isRestaurantRole(getSelectedRole())) {
+        const result = await finalizeRestaurantAuth();
+        if (!result.ok) {
+          setLoading(false);
+          setError(result.error || 'Could not continue to vendor portal.');
+        }
+        return;
+      }
+
       navigate('/signup-form-2');
     }
   }, [email, navigate]);
@@ -111,6 +120,10 @@ const VerifyEmail: React.FC = () => {
     setOverlayType('success');
     setOverlayVisible(true);
   };
+
+  if (loading) {
+    return <FullScreenLogoLoader />;
+  }
 
   return (
     <PageLayout showHeader={true} showFooter={false}>

@@ -57,7 +57,7 @@ venv/
 # ignore all files with .pyi extension
 *.pyi
 
-# other utility scripts
+# Backend utility scripts (seed/check tools — local dev only, not deployed)
 backend/scripts/
 
 **/docs/**

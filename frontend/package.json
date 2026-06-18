@@ -8,9 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @fast-bites/customer",
+    "dev": "npm run dev:all",
     "dev:customer": "npm run dev -w @fast-bites/customer",
     "dev:vendor": "npm run dev -w @fast-bites/vendor",
+    "dev:all": "npx --yes concurrently -n customer,vendor -c blue,magenta \"npm run dev:customer\" \"npm run dev:vendor\"",
     "build": "node scripts/build-all.mjs",
     "build:customer": "npm run build -w @fast-bites/customer",
     "build:vendor": "npm run build -w @fast-bites/vendor",

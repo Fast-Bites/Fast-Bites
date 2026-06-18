@@ -55,6 +55,14 @@ const Order: React.FC = () => {
     loadOrders();
   }, [loadOrders]);
 
+  useEffect(() => {
+    if (activeTab !== 'ongoing' || !hasOngoing) return;
+    const interval = window.setInterval(() => {
+      void loadOrders();
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [activeTab, hasOngoing, loadOrders]);
+
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const orderItemCount = items.reduce((s, i) => s + i.quantity, 0);
   const total = subtotal + deliveryFee;

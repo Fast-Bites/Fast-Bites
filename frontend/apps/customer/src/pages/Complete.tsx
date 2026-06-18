@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Button from '../components/Button';
 import { api } from '../lib/api';
+import { CUSTOMER_ROLE, resolveCustomerProfileRole, setActiveRole } from '../lib/activeRole';
 import { responsivePx, responsivePy } from '../constants/responsive';
 
 const Complete: React.FC = () => {
@@ -11,10 +12,12 @@ const Complete: React.FC = () => {
     useEffect(() => {
       // Get user's name from profile
       const fetchProfile = async () => {
-        const { data } = await api.getProfile() as { data?: { first_name?: string; last_name?: string } };
+        const role = resolveCustomerProfileRole();
+        const { data } = await api.getProfile(role) as { data?: { first_name?: string; last_name?: string } };
         if (data) {
           const name = `${data.first_name || ''} ${data.last_name || ''}`.trim();
           setFullName(name);
+          setActiveRole(role);
         }
       };
       fetchProfile();
@@ -38,7 +41,10 @@ const Complete: React.FC = () => {
 
           <Button
             variant="primary"
-            onClick={() => navigate('/home')}
+            onClick={() => {
+              setActiveRole(resolveCustomerProfileRole(CUSTOMER_ROLE));
+              navigate('/home');
+            }}
           >
             Explore
           </Button>

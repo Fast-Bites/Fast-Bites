@@ -36,6 +36,7 @@ import DepositSuccess from './pages/DepositSuccess';
 import Cart from './pages/Cart';
 import Order from './pages/Order';
 import Logout from './pages/Logout';
+import RestaurantAuthComplete from './pages/RestaurantAuthComplete';
 import './App.css';
 
 function App() {
@@ -53,6 +54,7 @@ function App() {
           <Route path="/signup-form" element={<SignUpForm />} />
           <Route path="/email-sent" element={<EmailSent />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/restaurant-auth-complete" element={<ProtectedRoute guard="session"><RestaurantAuthComplete /></ProtectedRoute>} />
           <Route path="/signin-form" element={<SignInForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
@@ -61,33 +63,33 @@ function App() {
           <Route path="/logout" element={<Logout />} />
 
           {/* Protected Routes - require authentication */}
-          <Route path="/signup-form-2" element={<ProtectedRoute><SignUpForm2 /></ProtectedRoute>} />
-          <Route path="/location" element={<ProtectedRoute><Location /></ProtectedRoute>} />
-          <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
-          <Route path="/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
-          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
-          <Route path="/orders" element={<ProtectedRoute><Order /></ProtectedRoute>} />
-          <Route path="/meal/:id" element={<ProtectedRoute><MealDetails /></ProtectedRoute>} />
-          <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
+          <Route path="/signup-form-2" element={<ProtectedRoute guard="onboarding"><SignUpForm2 /></ProtectedRoute>} />
+          <Route path="/location" element={<ProtectedRoute guard="onboarding"><Location /></ProtectedRoute>} />
+          <Route path="/map" element={<ProtectedRoute guard="onboarding"><Map /></ProtectedRoute>} />
+          <Route path="/complete" element={<ProtectedRoute guard="onboarding"><Complete /></ProtectedRoute>} />
+          <Route path="/home" element={<ProtectedRoute guard="customer"><Home /></ProtectedRoute>} />
+          <Route path="/cart" element={<ProtectedRoute guard="customer"><Cart /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute guard="customer"><Order /></ProtectedRoute>} />
+          <Route path="/meal/:id" element={<ProtectedRoute guard="customer"><MealDetails /></ProtectedRoute>} />
+          <Route path="/restaurants" element={<ProtectedRoute guard="customer"><Restaurants /></ProtectedRoute>} />
           {/* Nested meal under restaurant — URL stays under /restaurant/... */}
           <Route
             path="/restaurant/:restaurantId/meal/:mealId"
-            element={<ProtectedRoute><MealDetails /></ProtectedRoute>}
+            element={<ProtectedRoute guard="customer"><MealDetails /></ProtectedRoute>}
           />
-          <Route path="/restaurant/:id" element={<ProtectedRoute><RestaurantProfile /></ProtectedRoute>} />
-          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-          <Route path="/wallet/add-card" element={<ProtectedRoute><AddCard /></ProtectedRoute>} />
-          <Route path="/wallet/transactions" element={<ProtectedRoute><WalletTransactions /></ProtectedRoute>} />
-          <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
-          <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-          <Route path="/support/chat/:chatId" element={<ProtectedRoute><SupportChat /></ProtectedRoute>} />
-          <Route path="/deposit" element={<ProtectedRoute><Deposit /></ProtectedRoute>} />
+          <Route path="/restaurant/:id" element={<ProtectedRoute guard="customer"><RestaurantProfile /></ProtectedRoute>} />
+          <Route path="/wallet" element={<ProtectedRoute guard="customer"><Wallet /></ProtectedRoute>} />
+          <Route path="/wallet/add-card" element={<ProtectedRoute guard="customer"><AddCard /></ProtectedRoute>} />
+          <Route path="/wallet/transactions" element={<ProtectedRoute guard="customer"><WalletTransactions /></ProtectedRoute>} />
+          <Route path="/discover" element={<ProtectedRoute guard="customer"><Discover /></ProtectedRoute>} />
+          <Route path="/support" element={<ProtectedRoute guard="customer"><Support /></ProtectedRoute>} />
+          <Route path="/support/chat/:chatId" element={<ProtectedRoute guard="customer"><SupportChat /></ProtectedRoute>} />
+          <Route path="/deposit" element={<ProtectedRoute guard="customer"><Deposit /></ProtectedRoute>} />
           <Route
             path="/deposit/bank-transfer-details"
-            element={<ProtectedRoute><DepositBankTransferDetails /></ProtectedRoute>}
+            element={<ProtectedRoute guard="customer"><DepositBankTransferDetails /></ProtectedRoute>}
           />
-          <Route path="/deposit-success" element={<ProtectedRoute><DepositSuccess /></ProtectedRoute>} />
+          <Route path="/deposit-success" element={<ProtectedRoute guard="customer"><DepositSuccess /></ProtectedRoute>} />
         </Routes>
       </MobileOnly>
     </BrowserRouter>

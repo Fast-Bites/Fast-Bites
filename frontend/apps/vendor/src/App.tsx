@@ -1,32 +1,47 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import MobileOnly from '@/components/MobileOnly';
 import VendorLayout from '@/components/VendorLayout';
-import VendorProtectedRoute from '@/components/VendorProtectedRoute';
-import Landing from '@/pages/Landing';
-import SignIn from '@/pages/SignIn';
+import VendorProtectedRoute, { VendorVerifiedRoute } from '@/components/VendorProtectedRoute';
+import VerifyBusiness from '@/pages/VerifyBusiness';
+import VendorEntryRedirect from '@/pages/VendorEntryRedirect';
+import CustomerSignInRedirect from '@/pages/CustomerSignInRedirect';
 import Dashboard, { HoursPage, MenuPage, OrdersPage } from '@/pages/VendorPages';
+
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 export default function App() {
   return (
-    <BrowserRouter basename="/vendor">
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/sign-in" element={<SignIn />} />
+    <BrowserRouter basename={basename}>
+      <MobileOnly>
+        <Routes>
+          <Route path="/" element={<VendorEntryRedirect />} />
+          <Route path="/sign-in" element={<CustomerSignInRedirect />} />
 
-        <Route
-          element={
-            <VendorProtectedRoute>
-              <VendorLayout />
-            </VendorProtectedRoute>
-          }
-        >
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/menu" element={<MenuPage />} />
-          <Route path="/hours" element={<HoursPage />} />
-        </Route>
+          <Route
+            path="/verify-business"
+            element={
+              <VendorProtectedRoute>
+                <VerifyBusiness />
+              </VendorProtectedRoute>
+            }
+          />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route
+            element={
+              <VendorVerifiedRoute>
+                <VendorLayout />
+              </VendorVerifiedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/hours" element={<HoursPage />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </MobileOnly>
     </BrowserRouter>
   );
 }

@@ -12,19 +12,9 @@ const AUTH_STORAGE_MODE_KEY = 'fast_bites_auth_storage_mode';
 
 export const REMEMBER_ME_PREF_KEY = 'fast_bites_remember_me_preferred';
 
-function clearSupabaseKeys(storage: Storage) {
-  const keys: string[] = [];
-  for (let i = 0; i < storage.length; i++) {
-    const k = storage.key(i);
-    if (k?.startsWith('sb-')) keys.push(k);
-  }
-  keys.forEach((k) => storage.removeItem(k));
-}
-
 function getAuthStorage(): Storage {
+  // Always localStorage so the same auth session is shared across tabs (multi-role).
   if (typeof window === 'undefined') return localStorage;
-  const mode = localStorage.getItem(AUTH_STORAGE_MODE_KEY);
-  if (mode === 'session') return sessionStorage;
   return localStorage;
 }
 
@@ -42,18 +32,14 @@ function createSupabaseClient(): SupabaseClient {
 export let supabase = createSupabaseClient();
 
 /**
- * Run immediately before sign-in or sign-up. Checked "Remember me" → session in localStorage.
- * Unchecked → session in sessionStorage only (cleared when the browser session ends).
+ * Run immediately before sign-in or sign-up.
+ * Session is always stored in localStorage so other tabs stay signed in when adding a role.
+ * "Remember me" only persists the checkbox preference for the next visit.
  */
 export function prepareAuthPersistence(rememberMe: boolean): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(AUTH_STORAGE_MODE_KEY, rememberMe ? 'local' : 'session');
-  if (rememberMe) {
-    clearSupabaseKeys(sessionStorage);
-  } else {
-    clearSupabaseKeys(localStorage);
-  }
-  supabase = createSupabaseClient();
+  localStorage.setItem(AUTH_STORAGE_MODE_KEY, 'local');
+  persistRememberMeCheckboxPreference(rememberMe);
 }
 
 /** Persist last checkbox choice for default on next visit to sign-in / sign-up */

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { auth } from '../lib/api';
+import { CUSTOMER_ROLE, clearActiveRole } from '../lib/activeRole';
 import type { MenuItemWithRestaurant } from '../lib/api';
 import {
   fetchCartMenuItemIds,
@@ -58,7 +59,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       // Fetch user profile
-      const { data: profileData } = await api.getProfile();
+      const { data: profileData } = await api.getProfile(CUSTOMER_ROLE);
       if (profileData) {
         setUser(profileData as UserProfile);
       }
@@ -156,6 +157,7 @@ const Home: React.FC = () => {
         return;
       }
       await auth.signout();
+      clearActiveRole();
       navigate('/role-selection', { replace: true });
     } catch {
       setDeleteAccountBusy(false);

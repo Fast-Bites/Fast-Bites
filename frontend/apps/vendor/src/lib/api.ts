@@ -9,6 +9,8 @@ export interface VendorProfile {
   last_name: string;
   role: UserRole;
   restaurant_id?: string | null;
+  /** Set by backend once business verification is implemented. */
+  business_verified?: boolean;
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -30,7 +32,7 @@ export const vendorAuth = {
       return { error: 'Not authenticated' };
     }
 
-    return apiRequest<VendorProfile>('/users/profile', { authToken: token });
+    return apiRequest<VendorProfile>('/users/profile?role=restaurant', { authToken: token });
   },
 };
 

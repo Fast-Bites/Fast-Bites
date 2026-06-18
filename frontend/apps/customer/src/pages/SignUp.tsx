@@ -1,9 +1,18 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
+import { getSelectedRole, isValidRole } from '../lib/activeRole';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const role = getSelectedRole();
+    if (!role || !isValidRole(role)) {
+      navigate('/role-selection', { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <PageLayout showHeader={true} showFooter={true} paddingX="px-4">

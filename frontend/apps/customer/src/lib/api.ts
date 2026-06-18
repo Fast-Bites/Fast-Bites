@@ -1,4 +1,5 @@
 import { prepareAuthPersistence, supabase } from './supabase';
+import { CUSTOMER_ROLE, resolveCustomerProfileRole } from './activeRole';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8004";
 
@@ -55,13 +56,13 @@ const simplifyPasswordError = (errorMessage: string): string => {
 
 // Auth - using Supabase
 export const auth = {
-  signup: async (email: string, password: string, rememberMe = true) => {
+  signup: async (email: string, password: string, rememberMe = true, emailRedirectTo?: string) => {
     prepareAuthPersistence(rememberMe);
     const { data, error } = await supabase.auth.signUp({ 
       email, 
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/signup-form-2`,
+        emailRedirectTo: emailRedirectTo || `${window.location.origin}/signup-form-2`,
       }
     });
     if (error) return { error: simplifyPasswordError(error.message) };
@@ -157,13 +158,27 @@ export const api = {
     role?: string;
   }) => request("/users/profile", { method: "POST", body: JSON.stringify(data) }, true),
 
-  getProfile: () => request("/users/profile", {}, true),
+  getProfile: (role?: string) => {
+    const resolvedRole = role ?? resolveCustomerProfileRole();
+    return request(`/users/profile?role=${encodeURIComponent(resolvedRole)}`, {}, true);
+  },
 
-  updateProfile: (data: Record<string, unknown>) =>
-    request("/users/profile", { method: "PUT", body: JSON.stringify(data) }, true),
+  getRoles: () => request<{ roles: string[] }>('/users/roles', {}, true),
 
+  updateProfile: (data: Record<string, unknown>, role?: string) => {
+    const resolvedRole = role ?? resolveCustomerProfileRole();
+    return request(
+      `/users/profile?role=${encodeURIComponent(resolvedRole)}`,
+      { method: 'PUT', body: JSON.stringify(data) },
+      true,
+    );
+  },
+
+  /** Deletes all role profiles and the auth account. */
   deleteProfile: () =>
-    request("/users/profile", { method: "DELETE" }, true),
+    request('/users/profile', { method: 'DELETE' }, true),
+
+  getCustomerProfile: () => request(`/users/profile?role=${encodeURIComponent(CUSTOMER_ROLE)}`, {}, true),
 
   // Menu items - public endpoints (no auth required)
   getMenuItems: (limit = 100, offset = 0) =>
