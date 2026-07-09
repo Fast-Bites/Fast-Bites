@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { vendorAuth } from '@/lib/api';
 import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
-import { isBusinessVerified } from '@/lib/verification';
+import { resolveVendorPortalPath, type VendorPortalPath } from '@/lib/verification';
 import FullScreenLogoLoader from '@/components/FullScreenLogoLoader';
 
 export default function VendorEntryRedirect() {
-  const [target, setTarget] = useState<'/verify-business' | '/dashboard' | 'sign-in' | null>(null);
+  const [target, setTarget] = useState<VendorPortalPath | 'sign-in' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +26,7 @@ export default function VendorEntryRedirect() {
         return;
       }
 
-      setTarget(isBusinessVerified(data) ? '/dashboard' : '/verify-business');
+      setTarget(await resolveVendorPortalPath(data));
     };
 
     void resolveEntry();

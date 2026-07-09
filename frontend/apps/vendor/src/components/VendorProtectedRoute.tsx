@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { vendorAuth, type VendorProfile } from '@/lib/api';
 import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
-import { isBusinessVerified } from '@/lib/verification';
+import { isBusinessVerified, resolveVendorPortalPath, vendorVerificationPath, type VendorPortalPath } from '@/lib/verification';
 import FullScreenLogoLoader from '@/components/FullScreenLogoLoader';
 
 interface VendorProtectedRouteProps {
@@ -63,6 +63,7 @@ interface VendorVerifiedRouteProps {
 
 export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
   const [status, setStatus] = useState<'checking' | 'allowed' | 'unverified' | 'denied'>('checking');
+  const [redirectPath, setRedirectPath] = useState<VendorPortalPath>('/verify-business');
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +84,8 @@ export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
       }
 
       if (!isBusinessVerified(data as VendorProfile)) {
+        const path = await resolveVendorPortalPath(data);
+        setRedirectPath(path);
         setStatus('unverified');
         return;
       }
@@ -112,7 +115,7 @@ export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
   }
 
   if (status === 'unverified') {
-    return <Navigate to="/verify-business" replace />;
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;

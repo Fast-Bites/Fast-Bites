@@ -12,6 +12,7 @@ import {
   restaurantOperatingHoursText,
 } from '../lib/restaurantHours';
 import { formatRatingDisplay, resolveRating } from '../lib/restaurantDisplay';
+import { RestaurantCover } from '../components/RestaurantMedia';
 
 const Restaurants = () => {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ const Restaurants = () => {
         <SearchBar value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
       </div>
 
-      <div className={`${responsivePx} pb-8 space-y-6`}>
+      <div className={`${responsivePx} pb-8 grid grid-cols-1 min-[540px]:grid-cols-2 gap-6`}>
         {listNote && filteredRestaurants.length === 0 && (
           <p className="text-sm text-muted-foreground">{listNote}</p>
         )}
@@ -84,14 +85,11 @@ const Restaurants = () => {
               className="relative rounded-2xl overflow-hidden bg-card cursor-pointer"
               onClick={() => handleRestaurantClick(restaurant)}
             >
-              <div className="h-36 min-[450px]:h-36 overflow-hidden">
-                <img
-                  src={
-                    restaurant.image_url ||
-                    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=250&fit=crop'
-                  }
+              <div className="aspect-[16/10] w-full overflow-hidden">
+                <RestaurantCover
+                  imageUrl={restaurant.image_url}
                   alt={restaurant.name}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
 

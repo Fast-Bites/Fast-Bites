@@ -1,5 +1,5 @@
-/** Send unauthenticated vendor users back to the customer restaurant sign-in flow. */
+/** Send unauthenticated vendor users to the customer auth choice page (restaurant role). */
 export function redirectToCustomerRestaurantSignIn(): void {
   sessionStorage.setItem('selected_role', 'restaurant');
-  window.location.assign('/signin-form');
+  window.location.assign('/signup');
 }

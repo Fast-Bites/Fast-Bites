@@ -2,7 +2,10 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import MobileOnly from '@/components/MobileOnly';
 import VendorLayout from '@/components/VendorLayout';
 import VendorProtectedRoute, { VendorVerifiedRoute } from '@/components/VendorProtectedRoute';
+import VendorRegistrationGate from '@/components/VendorRegistrationGate';
 import VerifyBusiness from '@/pages/VerifyBusiness';
+import VerifyBusinessProcessing from '@/pages/VerifyBusinessProcessing';
+import VerifyBusinessDocumentation from '@/pages/VerifyBusinessDocumentation';
 import VendorEntryRedirect from '@/pages/VendorEntryRedirect';
 import CustomerSignInRedirect from '@/pages/CustomerSignInRedirect';
 import Dashboard, { HoursPage, MenuPage, OrdersPage } from '@/pages/VendorPages';
@@ -21,7 +24,25 @@ export default function App() {
             path="/verify-business"
             element={
               <VendorProtectedRoute>
-                <VerifyBusiness />
+                <VendorRegistrationGate>
+                  <VerifyBusiness />
+                </VendorRegistrationGate>
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-business/processing"
+            element={
+              <VendorProtectedRoute>
+                <VerifyBusinessProcessing />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-business/documentation"
+            element={
+              <VendorProtectedRoute>
+                <VerifyBusinessDocumentation />
               </VendorProtectedRoute>
             }
           />

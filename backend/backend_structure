@@ -16,3 +16,7 @@ alembic upgrade head
 ; How to run the app
 uvicorn main:app --reload --port 8004
 docker-compose up --build
+
+; Reset restaurant registration (keeps login, clears business details)
+python scripts/reset_restaurant_registration.py --email vendor@example.com
+python scripts/reset_restaurant_registration.py --email vendor@example.com --dry-run

@@ -45,20 +45,20 @@ async def list_cart(
     try:
         user_id = UUID(current_user["id"])
         result = await db.execute(
-            select(CartItem, Restaurant.name, Restaurant.image_url)
+            select(CartItem, Restaurant.name, Restaurant.logo_url, Restaurant.image_url)
             .join(Restaurant, CartItem.restaurant_id == Restaurant.id)
             .where(CartItem.user_id == user_id)
             .order_by(CartItem.restaurant_id, CartItem.created_at)
         )
         rows = result.all()
         groups: dict[str, RestaurantCartGroup] = {}
-        for cart_row, rest_name, rest_image in rows:
+        for cart_row, rest_name, rest_logo, rest_image in rows:
             rid = str(cart_row.restaurant_id)
             if rid not in groups:
                 groups[rid] = RestaurantCartGroup(
                     id=rid,
                     name=rest_name or "Restaurant",
-                    logo=rest_image,
+                    logo=rest_logo or rest_image,
                     items=[],
                 )
             groups[rid].items.append(item_to_response(cart_row))

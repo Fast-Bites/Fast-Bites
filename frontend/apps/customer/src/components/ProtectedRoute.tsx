@@ -79,7 +79,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, guard = 'cust
       }
 
       if (result.status === 'needs_customer_signin') {
-        navigate('/signin-form', { replace: true });
+        navigate('/signup', { replace: true });
         return;
       }
 

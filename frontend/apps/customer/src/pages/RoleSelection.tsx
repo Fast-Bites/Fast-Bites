@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import PageLayout from '../components/PageLayout';
-import { auth } from '../lib/api';
 import {
   CUSTOMER_ROLE,
   RIDER_ROLE,
@@ -12,10 +11,9 @@ import {
 const RoleSelection: React.FC = () => {
   const navigate = useNavigate();
 
-  const selectRole = async (role: string) => {
+  const selectRole = (role: string) => {
     setSelectedRole(role);
-    const { data: session } = await auth.getSession();
-    navigate(session ? '/signin-form' : '/signup');
+    navigate('/signup');
   };
 
   return (

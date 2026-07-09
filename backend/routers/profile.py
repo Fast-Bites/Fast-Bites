@@ -8,9 +8,12 @@ from sqlalchemy import select
 from database import get_db
 from models.user import User
 from models.user_role import UserRole
+from models.restaurant import Restaurant
 from schemas.user import UserUpdate, UserResponse, UserRolesResponse
 from services.jwt_auth import get_current_user
 from services.supabase_admin import delete_auth_user
+
+from services.vendor_verification import verification_stage_for_restaurant
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["profile"])
@@ -32,7 +35,14 @@ def normalize_phone_number(phone: str | None) -> str | None:
     return cleaned
 
 
-def role_profile_to_response(user_role: UserRole, email: str) -> UserResponse:
+def role_profile_to_response(
+    user_role: UserRole,
+    email: str,
+    *,
+    restaurant_id: UUID | None = None,
+    business_verified: bool | None = None,
+    verification_stage: str | None = None,
+) -> UserResponse:
     return UserResponse(
         id=user_role.user_id,
         email=email,
@@ -47,6 +57,9 @@ def role_profile_to_response(user_role: UserRole, email: str) -> UserResponse:
         state=user_role.state,
         latitude=user_role.latitude,
         longitude=user_role.longitude,
+        restaurant_id=restaurant_id,
+        business_verified=business_verified,
+        verification_stage=verification_stage,
     )
 
 
@@ -60,6 +73,31 @@ async def get_role_profile(db: AsyncSession, user_id: UUID, role: str) -> UserRo
         select(UserRole).where(UserRole.user_id == user_id, UserRole.role == role)
     )
     return result.scalar_one_or_none()
+
+
+async def get_restaurant_vendor_context(
+    db: AsyncSession,
+    user_role: UserRole,
+) -> tuple[UUID | None, bool | None, str | None]:
+    if user_role.role != "restaurant":
+        return None, None, None
+
+    restaurant = None
+    if user_role.restaurant_id:
+        result = await db.execute(select(Restaurant).where(Restaurant.id == user_role.restaurant_id))
+        restaurant = result.scalar_one_or_none()
+
+    if not restaurant:
+        result = await db.execute(
+            select(Restaurant).where(Restaurant.owner_user_id == user_role.user_id).limit(1)
+        )
+        restaurant = result.scalar_one_or_none()
+
+    if not restaurant:
+        return None, False, "registration"
+
+    stage = verification_stage_for_restaurant(restaurant)
+    return restaurant.id, restaurant.business_verified, stage
 
 
 async def ensure_user_account(
@@ -142,7 +180,14 @@ async def create_profile(
         await db.refresh(user_role)
 
         log.info("Role profile created: %s (%s)", email, role)
-        return role_profile_to_response(user_role, email)
+        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        return role_profile_to_response(
+            user_role,
+            email,
+            restaurant_id=restaurant_id,
+            business_verified=business_verified,
+            verification_stage=verification_stage,
+        )
 
     except HTTPException:
         raise
@@ -168,7 +213,14 @@ async def get_profile(
         if not user_role or not email:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        return role_profile_to_response(user_role, email)
+        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        return role_profile_to_response(
+            user_role,
+            email,
+            restaurant_id=restaurant_id,
+            business_verified=business_verified,
+            verification_stage=verification_stage,
+        )
 
     except HTTPException:
         raise
@@ -219,7 +271,14 @@ async def update_profile(
         await db.refresh(user_role)
 
         log.info(f"Profile updated: {email} ({role})")
-        return role_profile_to_response(user_role, email)
+        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        return role_profile_to_response(
+            user_role,
+            email,
+            restaurant_id=restaurant_id,
+            business_verified=business_verified,
+            verification_stage=verification_stage,
+        )
 
     except HTTPException:
         raise

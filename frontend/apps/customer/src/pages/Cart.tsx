@@ -15,6 +15,7 @@ import OverlayChoiceModal from '../components/OverlayChoiceModal';
 import ServingBreakdownPanel, { ItemNameWithServingSuffix } from '../components/ServingBreakdownPanel';
 import { hasMultiServingBreakdown, parseMultiServingBreakdown } from '../lib/servingBreakdown';
 import { responsivePx } from '../constants/responsive';
+import { RestaurantLogo } from '../components/RestaurantMedia';
 
 /* ── Types ─────────────────────────────────────────── */
 interface CartItem {
@@ -31,7 +32,7 @@ interface CartItem {
 interface RestaurantOrder {
   id: string;
   name: string;
-  logo: string;
+  logo?: string;
   items: CartItem[];
 }
 
@@ -39,7 +40,7 @@ function mapCartGroup(g: RestaurantCartDto): RestaurantOrder {
   return {
     id: g.id,
     name: g.name,
-    logo: g.logo ?? '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png',
+    logo: g.logo,
     items: g.items.map((i) => ({
       id: i.id,
       name: i.name,
@@ -257,7 +258,11 @@ const Cart: React.FC = () => {
             <div key={restaurant.id} className="mb-4 rounded-xl bg-overlay-panel-background px-2 py-5">
               <div className="mb-6 flex w-full min-w-0 items-center gap-3">
                 <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
-                  <img src={restaurant.logo} alt={restaurant.name} className="h-full w-full object-cover" />
+                  <RestaurantLogo
+                    logoUrl={restaurant.logo}
+                    alt={restaurant.name}
+                    containerClassName="rounded-full"
+                  />
                 </div>
                 <div className="min-w-0 flex-1 text-left">
                   <div className="flex min-w-0 items-center justify-between gap-2">

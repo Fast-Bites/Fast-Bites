@@ -14,6 +14,7 @@ import {
   restaurantIsOpen,
   restaurantOperatingHoursText,
 } from '../lib/restaurantHours';
+import { RestaurantCover, RestaurantLogo } from '../components/RestaurantMedia';
 
 interface MenuItem {
   id: string;
@@ -168,9 +169,9 @@ const RestaurantProfile = () => {
     <div className="min-h-screen bg-background text-foreground">
       {/* Cover — back only on image; details live with Menu below */}
       <div className="relative h-56">
-        <img
-          src={restaurant.image_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop'}
-          alt={restaurant.name}
+        <RestaurantCover
+          imageUrl={displayRestaurant.image_url}
+          alt={displayRestaurant.name}
           className="h-full w-full object-cover"
         />
         <BackButton variant="map" className="absolute left-4 top-4 z-10" />
@@ -182,16 +183,15 @@ const RestaurantProfile = () => {
           <div className="flex w-full items-center">
             <div className="flex max-w-full gap-2">
               <div className="flex h-12 w-12 shrink-0 overflow-hidden rounded-sm">
-                <img
-                  src="/assets/Chicken republic.png"
-                  alt="logo of restaurant"
-                  className="h-full w-full object-cover"
+                <RestaurantLogo
+                  logoUrl={displayRestaurant.logo_url}
+                  alt={`${displayRestaurant.name} logo`}
                 />
               </div>
 
               <div className="min-w-0 max-w-full flex flex-col justify-center text-left">
                 <h1 className="truncate text-lg font-semibold text-foreground">
-                  {restaurant.name}
+                  {displayRestaurant.name}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-x-2 text-xs">

@@ -25,4 +25,6 @@ class UserRole(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
+    restaurant_id = Column(UUID(as_uuid=True), ForeignKey("restaurants.id", ondelete="SET NULL"), nullable=True)
+
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

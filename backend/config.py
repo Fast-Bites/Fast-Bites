@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     API_PORT: int = 8004
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
+    CLOUDINARY_URL: str = ""
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+    CLOUDINARY_UPLOAD_FOLDER: str = "fast_bites/restaurants"
     # Set to "production" to disable localhost origins
     ENVIRONMENT: str = "development"
     

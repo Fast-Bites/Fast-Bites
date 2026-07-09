@@ -11,6 +11,7 @@ class RestaurantResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     image_url: Optional[str] = None
+    logo_url: Optional[str] = None
     rating: Optional[float] = None
     is_open: Optional[bool] = True
     created_at: Optional[datetime] = None

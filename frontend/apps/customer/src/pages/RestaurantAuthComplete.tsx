@@ -22,10 +22,10 @@ const RestaurantAuthComplete: React.FC = () => {
         <p className="text-sm text-red-400">{error}</p>
         <button
           type="button"
-          onClick={() => navigate(needsVerify ? '/email-sent' : '/signin-form')}
+          onClick={() => navigate(needsVerify ? '/email-sent' : '/signup')}
           className="text-sm text-primary underline"
         >
-          {needsVerify ? 'Verify your email →' : 'Back to sign in'}
+          {needsVerify ? 'Verify your email →' : 'Back to sign up'}
         </button>
       </div>
     );

@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, Text, Float, Boolean, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Text, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from database import Base
 import uuid
 
@@ -17,3 +17,17 @@ class Restaurant(Base):
     is_open = Column(Boolean, default=True, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=True)
 
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    owner_name = Column(Text, nullable=True)
+    business_type = Column(String(50), nullable=True)
+    logo_url = Column(Text, nullable=True)
+    phone = Column(String(20), nullable=True)
+    contact_person = Column(String(200), nullable=True)
+    email = Column(String(255), nullable=True)
+    landmark = Column(Text, nullable=True)
+    bank_name = Column(String(200), nullable=True)
+    account_number = Column(String(50), nullable=True)
+    account_holder_name = Column(String(200), nullable=True)
+    business_verified = Column(Boolean, default=False, nullable=False)
+    verification_submitted_at = Column(DateTime(timezone=True), nullable=True)
+    verification_documents = Column(JSONB, nullable=True)

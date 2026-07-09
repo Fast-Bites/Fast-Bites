@@ -1,218 +1,412 @@
-import { Fragment, useRef, useState } from 'react';
-import { ChevronDown, Plus } from 'lucide-react';
-import Button from '@/components/Button';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  FormField,
+  FormSelect,
+  FormTextInput,
+} from '@/components/FormField';
+import {
+  RegistrationPageHeader,
+  RegistrationSectionHeader,
+  RegistrationStepFooter,
+} from '@/components/RegistrationHeader';
+import RegistrationPageShell from '@/components/RegistrationPageShell';
+import UploadField from '@/components/UploadField';
+import type { BusinessRegistrationFormData } from '@/lib/businessRegistration';
+import { BUSINESS_TYPES } from '@/lib/businessDocumentation';
+import { vendorApi, vendorAuth } from '@/lib/api';
+import BusinessLocationFields from '@/components/BusinessLocationFields';
+import { parseCoordinateInput } from '@/lib/locationGeocoding';
 
-const verifyBackgroundUrl = `${import.meta.env.BASE_URL}assets/Admin bg.png`;
+const TOTAL_STEPS = 4;
 
-const STEPS = [1, 2, 3, 4];
+function validateStep(
+  step: number,
+  values: {
+    businessName: string;
+    businessOwner: string;
+    businessType: string;
+    phone: string;
+    contactPerson: string;
+    email: string;
+    address: string;
+    landmark: string;
+    latitude: string;
+    longitude: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  },
+): string | null {
+  const required = (value: string, label: string) =>
+    value.trim() ? null : `${label} is required.`;
 
-const BUSINESS_TYPES = [
-  'Restaurant',
-  'Shop',
-  'Pharmacy',
-  // 'Bar',
-  'Market',
-];
+  switch (step) {
+    case 1:
+      return (
+        required(values.businessName, 'Business name') ??
+        required(values.businessOwner, 'Business owner') ??
+        required(values.businessType, 'Business type')
+      );
+    case 2:
+      return (
+        required(values.phone, 'Phone') ??
+        required(values.contactPerson, 'Contact person') ??
+        required(values.email, 'Email')
+      );
+    case 3: {
+      const addressError =
+        required(values.address, 'Address') ?? required(values.landmark, 'Landmark');
+      if (addressError) return addressError;
 
-const inputClassName =
-  'mt-2 w-full rounded-lg border border-gray-400 bg-white px-5 py-3 text-base text-black outline-none transition placeholder:text-gray-400 focus:border-primary [background-color:#fff] [color-scheme:light]';
+      const hasLatitude = values.latitude.trim().length > 0;
+      const hasLongitude = values.longitude.trim().length > 0;
 
-const UPLOAD_BORDER_DASH = '10 10'; // dash length, gap length (adjust for longer/shorter dashes)
+      if (hasLatitude !== hasLongitude) {
+        return 'Enter both latitude and longitude, or leave both empty.';
+      }
 
-const MIN_DESCRIPTION_WORDS = 300;
+      if (hasLatitude && parseCoordinateInput(values.latitude) == null) {
+        return 'Latitude must be a valid number.';
+      }
 
-function countWords(value: string): number {
-  const trimmed = value.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).filter(Boolean).length;
-}
+      if (hasLongitude && parseCoordinateInput(values.longitude) == null) {
+        return 'Longitude must be a valid number.';
+      }
 
-function UploadField({
-  label,
-  onFileSelect,
-}: {
-  label: string;
-  onFileSelect: (file: File | null) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div>
-      <p className="mb-1 text-lg font-regular text-black">{label}</p>
-      <div className="relative rounded-xl">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="relative flex w-full flex-col items-center justify-center gap-3 rounded-xl bg-white px-5 py-12 transition hover:bg-white"
-        >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/25 text-primary">
-            <Plus size={46} strokeWidth={1.0} />
-          </span>
-          <span className="text-sm text-gray-400">Click to upload</span>
-        </button>
-        <svg
-          className="pointer-events-none absolute inset-0 z-10 h-full w-full"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <rect
-            width="100%"
-            height="100%"
-            rx="12"
-            ry="12"
-            fill="none"
-            className="stroke-primary"
-            strokeWidth="3"
-            strokeDasharray={UPLOAD_BORDER_DASH}
-          />
-        </svg>
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => onFileSelect(event.target.files?.[0] ?? null)}
-      />
-    </div>
-  );
-}
-
-function RegistrationStepper({ activeStep }: { activeStep: number }) {
-  return (
-    <div className="mx-auto mt-7 mb-10 flex w-full max-w-[100%] items-center sm:max-w-[65%]">
-      {STEPS.map((step, index) => (
-        <Fragment key={step}>
-          <div
-            className={[
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-semibold',
-              step === activeStep
-                ? 'bg-primary text-white'
-                : 'border border-gray-400 bg-transparent text-gray-400',
-            ].join(' ')}
-          >
-            {step}
-          </div>
-          {index < STEPS.length - 1 ? (
-            <div className="mx-1 h-px min-w-2 flex-1 bg-gray-400" />
-          ) : null}
-        </Fragment>
-      ))}
-    </div>
-  );
+      return null;
+    }
+    case 4:
+      return (
+        required(values.bankName, 'Bank name') ??
+        required(values.accountNumber, 'Account number') ??
+        required(values.accountName, 'Account holder name')
+      );
+    default:
+      return null;
+  }
 }
 
 export default function VerifyBusiness() {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+  const [stepError, setStepError] = useState<string | null>(null);
+
   const [businessName, setBusinessName] = useState('');
   const [businessOwner, setBusinessOwner] = useState('');
   const [businessType, setBusinessType] = useState('');
-  const [description, setDescription] = useState('');
-  const wordCount = countWords(description);
+  const [phone, setPhone] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [coverUploadError, setCoverUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAccountEmail = async () => {
+      const { data } = await vendorAuth.getSession();
+      const accountEmail = data.session?.user?.email?.trim();
+      if (!cancelled && accountEmail) {
+        setEmail((current) => current || accountEmail);
+      }
+    };
+
+    void loadAccountEmail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const uploadImage = async (file: File, kind: 'logo' | 'cover') => {
+    const setUploading = kind === 'logo' ? setLogoUploading : setCoverUploading;
+    const setError = kind === 'logo' ? setLogoUploadError : setCoverUploadError;
+    const setPreview = kind === 'logo' ? setLogoPreview : setCoverPreview;
+    const setUrl = kind === 'logo' ? setLogoUrl : setCoverImageUrl;
+
+    setUploading(true);
+    setError(null);
+    setPreview(URL.createObjectURL(file));
+
+    const result = await vendorApi.uploadRestaurantImage(file, kind);
+    setUploading(false);
+
+    if (result.error || !result.data) {
+      setError(result.error ?? 'Upload failed');
+      return;
+    }
+
+    setUrl(result.data.url);
+    setPreview(result.data.url);
+  };
+
+  const handleLogoSelect = (file: File | null) => {
+    if (!file) return;
+    void uploadImage(file, 'logo');
+  };
+
+  const handleCoverSelect = (file: File | null) => {
+    if (!file) return;
+    void uploadImage(file, 'cover');
+  };
 
   const handleNext = () => {
-    // Step 2+ and API wiring will be added later.
+    if (step === 1 && (logoUploading || coverUploading)) {
+      setStepError('Please wait for image uploads to finish.');
+      return;
+    }
+
+    const error = validateStep(step, {
+      businessName,
+      businessOwner,
+      businessType,
+      phone,
+      contactPerson,
+      email,
+      address,
+      landmark,
+      latitude,
+      longitude,
+      bankName,
+      accountNumber,
+      accountName,
+    });
+
+    if (error) {
+      setStepError(error);
+      return;
+    }
+
+    setStepError(null);
+
+    if (step < TOTAL_STEPS) {
+      setStep((current) => current + 1);
+      return;
+    }
+
+    const payload: BusinessRegistrationFormData = {
+      businessName,
+      businessOwner,
+      businessType,
+      logoUrl,
+      coverImageUrl,
+      phone,
+      contactPerson,
+      email,
+      address,
+      landmark,
+      latitude: parseCoordinateInput(latitude),
+      longitude: parseCoordinateInput(longitude),
+      bankName,
+      accountNumber,
+      accountName,
+    };
+
+    navigate('/verify-business/processing', { state: payload });
   };
 
   return (
-    <div
-      className="min-h-screen w-full bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-8 sm:py-12"
-      style={{ backgroundImage: `url("${verifyBackgroundUrl}")` }}
-    >
-      <div className="mx-auto w-full max-w-6xl bg-transparent sm:px-12 sm:py-2">
-        <div className="text-center">
-          <h1 className="text-4xl font-semibold text-gray-900">Details</h1>
-          <p className="mt-3 text-base text-gray-600">Register to get your business onboard</p>
-        </div>
+    <RegistrationPageShell>
+        <RegistrationPageHeader
+          title="Details"
+          subtitle="Register to get your business onboard"
+          activeStep={step}
+          totalSteps={TOTAL_STEPS}
+        />
 
-        <RegistrationStepper activeStep={1} />
-
-        <section>
-          <h2 className="text-2xl font-semibold text-gray-900">Business information</h2>
-          <p className="text-base text-gray-600">
-            Provide the basic information to get started with us.
-          </p>
-          <hr className="mt-1 mb-6 border-gray-400" />
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleNext();
-            }}
-            className="space-y-6 [color-scheme:light]"
-          >
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="block space-y-3 bg-transparent">
-                <span className="text-lg font-regular text-black">Business name</span>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  placeholder="All You Can Eat"
-                  className={inputClassName}
-                />
-              </label>
-
-              <label className="block space-y-3 bg-transparent">
-                <span className="text-lg font-regular text-black">Business Owner</span>
-                <input
-                  type="text"
-                  value={businessOwner}
-                  onChange={(event) => setBusinessOwner(event.target.value)}
-                  placeholder="John Doe"
-                  className={inputClassName}
-                />
-              </label>
-            </div>
-
-            <label className="block space-y-3 bg-transparent">
-              <span className="text-lg font-regular text-black">Business Type</span>
-              <div className="relative">
-                <select
-                  value={businessType}
-                  onChange={(event) => setBusinessType(event.target.value)}
-                  className={`${inputClassName} appearance-none`}
-                >
-                  <option value="" disabled className="text-gray-400">
-                    Restaurant
-                  </option>
-                  {BUSINESS_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={20}
-                  className="mt-1 pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-              </div>
-            </label>
-
-            <label className="block space-y-3 bg-transparent">
-              <span className="text-lg font-regular text-black">Description</span>
-              <input
-                type="text"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Not less than 300 words"
-                className={inputClassName}
+        <section className="flex min-h-0 flex-1 flex-col">
+          {step === 1 ? (
+            <>
+              <RegistrationSectionHeader
+                title="Business information"
+                description="Provide the basic information to get started with us."
               />
-              <p className="bg-transparent text-sm text-gray-400" aria-live="polite">
-                {wordCount} / {MIN_DESCRIPTION_WORDS}
-              </p>
-            </label>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <UploadField label="Logo" onFileSelect={() => undefined} />
-              <UploadField label="Cover Image" onFileSelect={() => undefined} />
-            </div>
+              <div className="space-y-6 [color-scheme:light]">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <FormField label="Business name" required>
+                    <FormTextInput
+                      type="text"
+                      value={businessName}
+                      onChange={(event) => setBusinessName(event.target.value)}
+                      placeholder="All You Can Eat"
+                      required
+                    />
+                  </FormField>
 
-            <Button type="submit" variant="primary" className="mt-5">
-              Next
-            </Button>
-          </form>
+                  <FormField label="Business Owner" required>
+                    <FormTextInput
+                      type="text"
+                      value={businessOwner}
+                      onChange={(event) => setBusinessOwner(event.target.value)}
+                      placeholder="John Doe"
+                      required
+                    />
+                  </FormField>
+                </div>
+
+                <FormField label="Business Type" required>
+                  <FormSelect
+                    value={businessType}
+                    onChange={(event) => setBusinessType(event.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select type
+                    </option>
+                    {BUSINESS_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <UploadField
+                    label="Logo"
+                    previewUrl={logoPreview}
+                    uploading={logoUploading}
+                    error={logoUploadError}
+                    onFileSelect={handleLogoSelect}
+                  />
+                  <UploadField
+                    label="Cover Image"
+                    previewUrl={coverPreview}
+                    uploading={coverUploading}
+                    error={coverUploadError}
+                    onFileSelect={handleCoverSelect}
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <>
+              <RegistrationSectionHeader
+                title="Contact information"
+                description="How customers and delivery partners can reach you."
+              />
+
+              <div className="space-y-6 [color-scheme:light]">
+                <FormField label="Phone" required>
+                  <FormTextInput
+                    type="tel"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    placeholder="0000 000 0000"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Contact Person" required>
+                  <FormTextInput
+                    type="text"
+                    value={contactPerson}
+                    onChange={(event) => setContactPerson(event.target.value)}
+                    placeholder="John Doe"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Email" required>
+                  <FormTextInput
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Allyoucaneat@gmail.com"
+                    required
+                  />
+                </FormField>
+              </div>
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              <RegistrationSectionHeader
+                title="Location"
+                description="Where customers and riders can find you."
+              />
+
+              <BusinessLocationFields
+                address={address}
+                landmark={landmark}
+                latitude={latitude}
+                longitude={longitude}
+                onAddressChange={setAddress}
+                onLandmarkChange={setLandmark}
+                onLatitudeChange={setLatitude}
+                onLongitudeChange={setLongitude}
+              />
+            </>
+          ) : null}
+
+          {step === 4 ? (
+            <>
+              <RegistrationSectionHeader
+                title="Finance"
+                description="Where your earnings will be paid."
+              />
+
+              <div className="space-y-6 [color-scheme:light]">
+                <FormField label="Bank Name" required>
+                  <FormTextInput
+                    type="text"
+                    value={bankName}
+                    onChange={(event) => setBankName(event.target.value)}
+                    placeholder="Enter name here"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Account Number" required>
+                  <FormTextInput
+                    type="text"
+                    inputMode="numeric"
+                    value={accountNumber}
+                    onChange={(event) => setAccountNumber(event.target.value)}
+                    placeholder="xxx xxx xxxx"
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Account Holder Name" required>
+                  <FormTextInput
+                    type="text"
+                    value={accountName}
+                    onChange={(event) => setAccountName(event.target.value)}
+                    placeholder="Enter name here"
+                    required
+                  />
+                </FormField>
+              </div>
+            </>
+          ) : null}
         </section>
-      </div>
-    </div>
+
+        {stepError ? (
+          <p className="mt-4 text-sm text-red-600" role="alert">
+            {stepError}
+          </p>
+        ) : null}
+
+        <RegistrationStepFooter onNext={handleNext} label="Next" />
+    </RegistrationPageShell>
   );
 }

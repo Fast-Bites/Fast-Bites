@@ -309,6 +309,7 @@ export interface Restaurant {
   latitude?: number;
   longitude?: number;
   image_url?: string;
+  logo_url?: string;
   rating?: number;
   is_open?: boolean;
   is_open_now?: boolean | null;

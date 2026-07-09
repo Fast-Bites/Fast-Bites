@@ -8,10 +8,10 @@ import {
   setSelectedRole,
 } from './activeRole';
 
-/** Where unauthenticated vendor users should sign in (customer app). */
+/** Where unauthenticated vendor users pick sign-up / sign-in (customer app). */
 export function redirectToCustomerRestaurantSignIn(): void {
   setSelectedRole(RESTAURANT_ROLE);
-  window.location.assign('/signin-form');
+  window.location.assign('/signup');
 }
 
 /** Build a vendor-portal URL on the same origin so Supabase session is preserved in dev. */
@@ -24,7 +24,7 @@ export function getVendorPortalUrl(path = '/verify-business'): string {
 export function redirectRestaurantToVendorPortal(): void {
   setActiveRole(RESTAURANT_ROLE);
   clearSelectedRole();
-  window.location.assign(getVendorPortalUrl('/verify-business'));
+  window.location.assign(getVendorPortalUrl('/'));
 }
 
 export { getSelectedRole, isRestaurantRole } from './activeRole';
