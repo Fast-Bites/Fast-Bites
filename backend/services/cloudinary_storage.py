@@ -14,7 +14,7 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_DOCUMENT_CONTENT_TYPES = ALLOWED_CONTENT_TYPES | {"application/pdf"}
-ALLOWED_KINDS = {"logo", "cover", "document"}
+ALLOWED_KINDS = {"logo", "cover", "document", "menu"}
 
 
 def _normalize_cloudinary_url(raw: str) -> str:
@@ -64,17 +64,58 @@ def configure_cloudinary() -> None:
     )
 
 
-def upload_folder_for(kind: str, user_id: str, document_key: str | None = None) -> str:
+def _slugify(value: str, fallback: str = "item") -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", (value or "").strip().lower()).strip("-")
+    return slug[:80] or fallback
+
+
+def upload_folder_for(
+    kind: str,
+    user_id: str,
+    document_key: str | None = None,
+    *,
+    restaurant_id: str | None = None,
+    restaurant_name: str | None = None,
+    menu_item_name: str | None = None,
+) -> str:
+    """
+    Cloudinary layout for easy browsing:
+
+    fast_bites/restaurants/vendors/{restaurant_slug}/logo
+    fast_bites/restaurants/vendors/{restaurant_slug}/cover
+    fast_bites/restaurants/vendors/{restaurant_slug}/menu/{item_slug}
+    fast_bites/restaurants/vendors/{restaurant_slug}/documents/{key}
+
+    Registration uploads (before a restaurant row exists) still use:
+    fast_bites/restaurants/{user_id}/logos|covers|documents/...
+    """
     base = settings.CLOUDINARY_UPLOAD_FOLDER.strip().rstrip("/")
+
+    if restaurant_id or restaurant_name:
+        vendor_key = _slugify(restaurant_name or "", fallback="") or _slugify(
+            restaurant_id or "", fallback="vendor"
+        )
+        vendor_root = f"{base}/vendors/{vendor_key}"
+
+        if kind == "logo":
+            return f"{vendor_root}/logo"
+        if kind == "cover":
+            return f"{vendor_root}/cover"
+        if kind == "menu":
+            return f"{vendor_root}/menu"
+        safe_key = _slugify(document_key or "misc")
+        return f"{vendor_root}/documents/{safe_key}"
+
     safe_user_id = re.sub(r"[^a-zA-Z0-9_-]", "", user_id)
     if kind == "logo":
-        subfolder = "logos"
-    elif kind == "cover":
-        subfolder = "covers"
-    else:
-        safe_key = re.sub(r"[^a-zA-Z0-9_-]", "", document_key or "misc")
-        return f"{base}/{safe_user_id}/documents/{safe_key}"
-    return f"{base}/{safe_user_id}/{subfolder}"
+        return f"{base}/{safe_user_id}/logos"
+    if kind == "cover":
+        return f"{base}/{safe_user_id}/covers"
+    if kind == "menu":
+        return f"{base}/{safe_user_id}/menu"
+
+    safe_key = re.sub(r"[^a-zA-Z0-9_-]", "", document_key or "misc")
+    return f"{base}/{safe_user_id}/documents/{safe_key}"
 
 
 async def upload_restaurant_image(
@@ -82,6 +123,10 @@ async def upload_restaurant_image(
     kind: str,
     user_id: str,
     document_key: str | None = None,
+    *,
+    restaurant_id: str | None = None,
+    restaurant_name: str | None = None,
+    menu_item_name: str | None = None,
 ) -> dict[str, str]:
     if kind not in ALLOWED_KINDS:
         raise HTTPException(status_code=400, detail="Invalid image kind")
@@ -92,7 +137,11 @@ async def upload_restaurant_image(
     content_type = (file.content_type or "").lower()
     allowed_types = ALLOWED_DOCUMENT_CONTENT_TYPES if kind == "document" else ALLOWED_CONTENT_TYPES
     if content_type not in allowed_types:
-        detail = "Only JPEG, PNG, WEBP, GIF, or PDF files are allowed" if kind == "document" else "Only JPEG, PNG, WEBP, or GIF images are allowed"
+        detail = (
+            "Only JPEG, PNG, WEBP, GIF, or PDF files are allowed"
+            if kind == "document"
+            else "Only JPEG, PNG, WEBP, or GIF images are allowed"
+        )
         raise HTTPException(status_code=400, detail=detail)
 
     data = await file.read()
@@ -105,25 +154,80 @@ async def upload_restaurant_image(
         raise HTTPException(status_code=400, detail=f"File must be {limit} or smaller")
 
     configure_cloudinary()
-    folder = upload_folder_for(kind, user_id, document_key=document_key)
+    folder = upload_folder_for(
+        kind,
+        user_id,
+        document_key=document_key,
+        restaurant_id=restaurant_id,
+        restaurant_name=restaurant_name,
+        menu_item_name=menu_item_name,
+    )
     resource_type = "auto" if kind == "document" else "image"
+    public_id = None
+    if kind == "menu" and menu_item_name:
+        public_id = _slugify(menu_item_name)
+    elif kind in {"logo", "cover"}:
+        public_id = kind
 
     try:
-        result = cloudinary.uploader.upload(
-            data,
-            folder=folder,
-            resource_type=resource_type,
-            overwrite=True,
-            use_filename=True,
-            unique_filename=True,
-        )
+        upload_kwargs: dict = {
+            "folder": folder,
+            "resource_type": resource_type,
+            "overwrite": True,
+            "unique_filename": public_id is None,
+        }
+        if public_id:
+            upload_kwargs["public_id"] = public_id
+            upload_kwargs["use_filename"] = False
+        else:
+            upload_kwargs["use_filename"] = True
+
+        result = cloudinary.uploader.upload(data, **upload_kwargs)
     except Exception as exc:
         log.error("Cloudinary upload failed: %s", exc)
         raise HTTPException(status_code=502, detail="Failed to upload file") from exc
 
     secure_url = result.get("secure_url")
-    public_id = result.get("public_id")
-    if not secure_url or not public_id:
+    public_id_result = result.get("public_id")
+    if not secure_url or not public_id_result:
         raise HTTPException(status_code=502, detail="Upload succeeded but no URL was returned")
 
-    return {"url": secure_url, "public_id": public_id}
+    return {"url": secure_url, "public_id": public_id_result}
+
+
+def upload_image_from_url(
+    image_url: str,
+    *,
+    kind: str,
+    restaurant_id: str,
+    restaurant_name: str,
+    menu_item_name: str | None = None,
+) -> dict[str, str]:
+    """Upload a remote image URL into the vendor folder structure (used by seed scripts)."""
+    if kind not in ALLOWED_KINDS:
+        raise ValueError(f"Invalid kind: {kind}")
+
+    configure_cloudinary()
+    folder = upload_folder_for(
+        kind,
+        user_id=restaurant_id,
+        restaurant_id=restaurant_id,
+        restaurant_name=restaurant_name,
+        menu_item_name=menu_item_name,
+    )
+    public_id = _slugify(menu_item_name) if kind == "menu" and menu_item_name else kind
+
+    result = cloudinary.uploader.upload(
+        image_url,
+        folder=folder,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="image",
+        use_filename=False,
+        unique_filename=False,
+    )
+    secure_url = result.get("secure_url")
+    public_id_result = result.get("public_id")
+    if not secure_url or not public_id_result:
+        raise RuntimeError("Upload succeeded but no URL was returned")
+    return {"url": secure_url, "public_id": public_id_result}
