@@ -23,7 +23,7 @@ const SHOP_MARKET_DOCUMENTATION: BusinessDocumentationConfig = {
   sectionTitle: 'Shops',
   sectionDescription: DOCUMENTATION_SECTION_DESCRIPTION,
   documents: [
-    { id: 'business_permit', label: 'Business Permit', required: true },
+    { id: 'business_permit', label: 'Business Permit' },
     { id: 'id', label: 'ID', required: true },
   ],
 };
@@ -33,9 +33,9 @@ export const BUSINESS_DOCUMENTATION: Record<BusinessTypeKey, BusinessDocumentati
     sectionTitle: 'Restaurants',
     sectionDescription: DOCUMENTATION_SECTION_DESCRIPTION,
     documents: [
-      { id: 'cac_registration', label: 'Business Registration (C.A.C)', required: true },
+      { id: 'cac_registration', label: 'Business Registration (C.A.C)' },
       { id: 'owner_manager_id', label: 'ID of Owner/Manager', required: true },
-      { id: 'food_handling_permit', label: 'Food Handling Permit', required: true },
+      { id: 'food_handling_permit', label: 'Food Handling Permit' },
     ],
   },
   Shop: SHOP_MARKET_DOCUMENTATION,
@@ -45,11 +45,10 @@ export const BUSINESS_DOCUMENTATION: Record<BusinessTypeKey, BusinessDocumentati
     sectionDescription: DOCUMENTATION_SECTION_DESCRIPTION,
     documents: [
       { id: 'pharmacist_license', label: 'Pharmacist License', required: true },
-      { id: 'pharmacy_premises_license', label: 'Pharmacy Premises License', required: true },
+      { id: 'pharmacy_premises_license', label: 'Pharmacy Premises License' },
       {
         id: 'superintendent_pharmacist_details',
         label: 'Superintendent Pharmacist Details',
-        required: true,
       },
     ],
   },

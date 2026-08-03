@@ -12,13 +12,11 @@ from models.restaurant import Restaurant
 from schemas.user import UserUpdate, UserResponse, UserRolesResponse
 from services.jwt_auth import get_current_user
 from services.supabase_admin import delete_auth_user
-
-from services.vendor_verification import verification_stage_for_restaurant
+from services.role_constants import VENDOR_ROLE, LEGACY_VENDOR_ROLE, normalize_role, is_valid_role
+from services.vendor_verification import verification_stage_for_business
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["profile"])
-
-VALID_ROLES = {"customer", "rider", "restaurant"}
 
 
 def normalize_phone_number(phone: str | None) -> str | None:
@@ -39,7 +37,7 @@ def role_profile_to_response(
     user_role: UserRole,
     email: str,
     *,
-    restaurant_id: UUID | None = None,
+    business_id: UUID | None = None,
     business_verified: bool | None = None,
     verification_stage: str | None = None,
 ) -> UserResponse:
@@ -51,13 +49,13 @@ def role_profile_to_response(
         phone=user_role.phone,
         dob=user_role.dob,
         google_id=user_role.google_id,
-        role=user_role.role,
+        role=normalize_role(user_role.role) or user_role.role,
         address=user_role.address,
         city=user_role.city,
         state=user_role.state,
         latitude=user_role.latitude,
         longitude=user_role.longitude,
-        restaurant_id=restaurant_id,
+        business_id=business_id,
         business_verified=business_verified,
         verification_stage=verification_stage,
     )
@@ -69,35 +67,46 @@ async def get_user_account(db: AsyncSession, user_id: UUID) -> User | None:
 
 
 async def get_role_profile(db: AsyncSession, user_id: UUID, role: str) -> UserRole | None:
+    normalized = normalize_role(role)
+    if not normalized:
+        return None
     result = await db.execute(
-        select(UserRole).where(UserRole.user_id == user_id, UserRole.role == role)
+        select(UserRole).where(UserRole.user_id == user_id, UserRole.role == normalized)
     )
-    return result.scalar_one_or_none()
+    profile = result.scalar_one_or_none()
+    if profile or normalized != VENDOR_ROLE:
+        return profile
+
+    legacy = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id, UserRole.role == LEGACY_VENDOR_ROLE)
+    )
+    return legacy.scalar_one_or_none()
 
 
-async def get_restaurant_vendor_context(
+async def get_vendor_context(
     db: AsyncSession,
     user_role: UserRole,
 ) -> tuple[UUID | None, bool | None, str | None]:
-    if user_role.role != "restaurant":
+    if user_role.role not in {VENDOR_ROLE, LEGACY_VENDOR_ROLE}:
         return None, None, None
 
-    restaurant = None
-    if user_role.restaurant_id:
-        result = await db.execute(select(Restaurant).where(Restaurant.id == user_role.restaurant_id))
-        restaurant = result.scalar_one_or_none()
+    business = None
+    business_id = getattr(user_role, "business_id", None)
+    if business_id:
+        result = await db.execute(select(Restaurant).where(Restaurant.id == business_id))
+        business = result.scalar_one_or_none()
 
-    if not restaurant:
+    if not business:
         result = await db.execute(
             select(Restaurant).where(Restaurant.owner_user_id == user_role.user_id).limit(1)
         )
-        restaurant = result.scalar_one_or_none()
+        business = result.scalar_one_or_none()
 
-    if not restaurant:
+    if not business:
         return None, False, "registration"
 
-    stage = verification_stage_for_restaurant(restaurant)
-    return restaurant.id, restaurant.business_verified, stage
+    stage = verification_stage_for_business(business)
+    return business.id, business.business_verified, stage
 
 
 async def ensure_user_account(
@@ -110,12 +119,13 @@ async def ensure_user_account(
     if user:
         return user
 
+    role = normalize_role(profile_data.role) or "customer"
     user = User(
         id=user_id,
         email=email,
         first_name=profile_data.first_name or "User",
         last_name=profile_data.last_name or "Account",
-        role=profile_data.role or "customer",
+        role=role,
     )
     db.add(user)
     await db.flush()
@@ -129,7 +139,7 @@ async def list_roles(
 ):
     user_id = UUID(current_user["id"])
     result = await db.execute(select(UserRole.role).where(UserRole.user_id == user_id))
-    roles = [row[0] for row in result.all()]
+    roles = [normalize_role(row[0]) or row[0] for row in result.all()]
     return UserRolesResponse(roles=roles)
 
 
@@ -142,9 +152,9 @@ async def create_profile(
     try:
         user_id = UUID(current_user["id"])
         email = current_user.get("email")
-        role = profile_data.role or "customer"
+        role = normalize_role(profile_data.role) or "customer"
 
-        if role not in VALID_ROLES:
+        if not is_valid_role(role):
             raise HTTPException(status_code=400, detail="Invalid role")
 
         if not email:
@@ -180,11 +190,11 @@ async def create_profile(
         await db.refresh(user_role)
 
         log.info("Role profile created: %s (%s)", email, role)
-        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        business_id, business_verified, verification_stage = await get_vendor_context(db, user_role)
         return role_profile_to_response(
             user_role,
             email,
-            restaurant_id=restaurant_id,
+            business_id=business_id,
             business_verified=business_verified,
             verification_stage=verification_stage,
         )
@@ -198,26 +208,27 @@ async def create_profile(
 
 @router.get("/profile", response_model=UserResponse)
 async def get_profile(
-    role: str = Query(..., description="Profile role: customer, rider, or restaurant"),
+    role: str = Query(..., description="Profile role: customer, rider, or vendor"),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        if role not in VALID_ROLES:
+        normalized_role = normalize_role(role)
+        if not normalized_role or not is_valid_role(normalized_role):
             raise HTTPException(status_code=400, detail="Invalid role")
 
         user_id = UUID(current_user["id"])
         email = current_user.get("email")
-        user_role = await get_role_profile(db, user_id, role)
+        user_role = await get_role_profile(db, user_id, normalized_role)
 
         if not user_role or not email:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        business_id, business_verified, verification_stage = await get_vendor_context(db, user_role)
         return role_profile_to_response(
             user_role,
             email,
-            restaurant_id=restaurant_id,
+            business_id=business_id,
             business_verified=business_verified,
             verification_stage=verification_stage,
         )
@@ -237,12 +248,13 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        if role not in VALID_ROLES:
+        normalized_role = normalize_role(role)
+        if not normalized_role or not is_valid_role(normalized_role):
             raise HTTPException(status_code=400, detail="Invalid role")
 
         user_id = UUID(current_user["id"])
         email = current_user.get("email")
-        user_role = await get_role_profile(db, user_id, role)
+        user_role = await get_role_profile(db, user_id, normalized_role)
 
         if not user_role or not email:
             raise HTTPException(status_code=404, detail="Profile not found")
@@ -270,12 +282,12 @@ async def update_profile(
         await db.commit()
         await db.refresh(user_role)
 
-        log.info(f"Profile updated: {email} ({role})")
-        restaurant_id, business_verified, verification_stage = await get_restaurant_vendor_context(db, user_role)
+        log.info(f"Profile updated: {email} ({normalized_role})")
+        business_id, business_verified, verification_stage = await get_vendor_context(db, user_role)
         return role_profile_to_response(
             user_role,
             email,
-            restaurant_id=restaurant_id,
+            business_id=business_id,
             business_verified=business_verified,
             verification_stage=verification_stage,
         )

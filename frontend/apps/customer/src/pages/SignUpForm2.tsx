@@ -10,7 +10,7 @@ import {
   isValidRole,
   setActiveRole,
 } from '../lib/activeRole';
-import { finalizeRestaurantAuth, isRestaurantRole } from '../lib/vendorRedirect';
+import { finalizeVendorAuth, isVendorRole } from '../lib/vendorRedirect';
 import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
 
 const SignUpForm2: React.FC = () => {
@@ -32,14 +32,14 @@ const SignUpForm2: React.FC = () => {
       return;
     }
 
-    if (isRestaurantRole(selectedRole)) {
+    if (isVendorRole(selectedRole)) {
       void (async () => {
         const { data: user } = await auth.getUser();
         if (user && !user.email_confirmed_at) {
           navigate('/email-sent', { replace: true });
           return;
         }
-        await finalizeRestaurantAuth();
+        await finalizeVendorAuth();
       })();
       return;
     }

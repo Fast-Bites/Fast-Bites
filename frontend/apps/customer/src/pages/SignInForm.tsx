@@ -158,10 +158,10 @@ const SignInForm: React.FC = () => {
             {showRegisterLink && (
               <button
                 type="button"
-                onClick={() => navigate('/signup')}
+                onClick={() => navigate('/role-selection')}
                 className="text-primary text-xs underline mt-1"
               >
-                Don&apos;t have an account? Sign up →
+                Back to role selection →
               </button>
             )}
             {showVerifyLink && (

@@ -1,5 +1,6 @@
 import type { BusinessRegistrationSummary, VendorProfile } from './api';
 import { vendorApi } from './api';
+import { isDocumentationSkipped, isMenuSetupDone } from './menuSetup';
 
 export type VendorVerificationStage =
   | 'registration'
@@ -10,10 +11,19 @@ export type VendorVerificationStage =
 export type VendorPortalPath =
   | '/dashboard'
   | '/verify-business'
-  | '/verify-business/documentation';
+  | '/verify-business/documentation'
+  | '/verify-business/menu';
 
 export function isBusinessVerified(profile: VendorProfile | null | undefined): boolean {
   return profile?.business_verified === true || profile?.verification_stage === 'verified';
+}
+
+function pathAfterDocumentation(): VendorPortalPath {
+  return isMenuSetupDone() ? '/dashboard' : '/verify-business/menu';
+}
+
+function documentationStepComplete(registration?: BusinessRegistrationSummary | null): boolean {
+  return Boolean(registration?.documents_submitted) || isDocumentationSkipped();
 }
 
 export function vendorVerificationPath(
@@ -21,17 +31,24 @@ export function vendorVerificationPath(
   registration?: BusinessRegistrationSummary | null,
 ): VendorPortalPath {
   if (isBusinessVerified(profile)) {
-    return '/dashboard';
+    return pathAfterDocumentation();
   }
 
   const stage = profile?.verification_stage ?? registration?.verification_stage;
 
-  if (stage === 'documentation' || stage === 'pending_review') {
+  if (stage === 'pending_review') {
+    return pathAfterDocumentation();
+  }
+
+  if (stage === 'documentation') {
+    if (documentationStepComplete(registration)) {
+      return pathAfterDocumentation();
+    }
     return '/verify-business/documentation';
   }
 
-  if (!stage && registration?.documents_submitted) {
-    return '/verify-business/documentation';
+  if (!stage && documentationStepComplete(registration)) {
+    return pathAfterDocumentation();
   }
 
   if (!stage && registration?.business_type) {
@@ -44,8 +61,17 @@ export function vendorVerificationPath(
 export async function resolveVendorPortalPath(
   profile: VendorProfile | null | undefined,
 ): Promise<VendorPortalPath> {
+  const stage = profile?.verification_stage;
+
+  // Always load registration details once business info exists so we know
+  // whether docs were submitted/skipped before choosing documentation vs menu.
+  if (stage && stage !== 'registration') {
+    const registration = await vendorApi.getBusinessRegistration();
+    return vendorVerificationPath(profile, registration.data ?? null);
+  }
+
   const directPath = vendorVerificationPath(profile);
-  if (directPath !== '/verify-business' || profile?.verification_stage) {
+  if (directPath !== '/verify-business') {
     return directPath;
   }
 

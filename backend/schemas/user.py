@@ -37,7 +37,7 @@ class UserResponse(BaseModel):
     state: Optional[str]
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    restaurant_id: Optional[UUID] = None
+    business_id: Optional[UUID] = None
     business_verified: Optional[bool] = None
     verification_stage: Optional[str] = None
     

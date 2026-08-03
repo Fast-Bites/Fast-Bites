@@ -138,11 +138,18 @@ export default function VerifyBusiness() {
     const setPreview = kind === 'logo' ? setLogoPreview : setCoverPreview;
     const setUrl = kind === 'logo' ? setLogoUrl : setCoverImageUrl;
 
+    if (!businessName.trim()) {
+      setError('Enter the business name before uploading images.');
+      return;
+    }
+
     setUploading(true);
     setError(null);
     setPreview(URL.createObjectURL(file));
 
-    const result = await vendorApi.uploadRestaurantImage(file, kind);
+    const result = await vendorApi.uploadVendorImage(file, kind, {
+      businessName: businessName.trim(),
+    });
     setUploading(false);
 
     if (result.error || !result.data) {

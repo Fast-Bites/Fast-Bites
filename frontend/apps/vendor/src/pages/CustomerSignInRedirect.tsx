@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
+import { redirectToCustomerVendorSignIn } from '@/lib/customerAuthRedirect';
 
 export default function CustomerSignInRedirect() {
   useEffect(() => {
-    redirectToCustomerRestaurantSignIn();
+    redirectToCustomerVendorSignIn();
   }, []);
 
   return (

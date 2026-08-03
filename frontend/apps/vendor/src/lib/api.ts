@@ -10,19 +10,19 @@ export interface VendorProfile {
   first_name: string;
   last_name: string;
   role: UserRole;
-  restaurant_id?: string | null;
+  business_id?: string | null;
   business_verified?: boolean;
   verification_stage?: 'registration' | 'documentation' | 'pending_review' | 'verified' | null;
 }
 
 export interface BusinessRegistrationResult {
-  restaurant_id: string;
+  business_id: string;
   business_verified: boolean;
   verification_submitted_at?: string | null;
 }
 
 export interface BusinessRegistrationSummary {
-  restaurant_id: string;
+  business_id: string;
   business_name: string;
   business_type: string;
   business_verified: boolean;
@@ -30,7 +30,7 @@ export interface BusinessRegistrationSummary {
   documents_submitted: boolean;
 }
 
-export interface RestaurantImageUploadResult {
+export interface VendorImageUploadResult {
   url: string;
   public_id: string;
 }
@@ -54,14 +54,23 @@ export const vendorAuth = {
       return { error: 'Not authenticated' };
     }
 
-    return apiRequest<VendorProfile>('/users/profile?role=restaurant', { authToken: token });
+    return apiRequest<VendorProfile>('/users/profile?role=vendor', { authToken: token });
   },
 };
 
 export const vendorApi = {
   getProfile: () => vendorAuth.getProfile(),
 
-  uploadRestaurantImage: async (file: File, kind: 'logo' | 'cover') => {
+  uploadVendorImage: async (
+    file: File,
+    kind: 'logo' | 'cover' | 'menu' | 'document',
+    options?: {
+      businessName?: string | null;
+      businessId?: string | null;
+      menuItemName?: string | null;
+      documentKey?: string | null;
+    },
+  ) => {
     const token = await getAuthToken();
     if (!token) {
       return { error: 'Not authenticated' };
@@ -70,9 +79,21 @@ export const vendorApi = {
     const formData = new FormData();
     formData.append('kind', kind);
     formData.append('file', file);
+    if (options?.businessName?.trim()) {
+      formData.append('business_name', options.businessName.trim());
+    }
+    if (options?.businessId?.trim()) {
+      formData.append('business_id', options.businessId.trim());
+    }
+    if (options?.menuItemName?.trim()) {
+      formData.append('menu_item_name', options.menuItemName.trim());
+    }
+    if (options?.documentKey?.trim()) {
+      formData.append('document_key', options.documentKey.trim());
+    }
 
     try {
-      const response = await fetch(`${getApiUrl()}/restaurants/upload-image`, {
+      const response = await fetch(`${getApiUrl()}/vendors/upload-image`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -85,43 +106,53 @@ export const vendorApi = {
         return { error: (error as { detail?: string }).detail || 'Upload failed' };
       }
 
-      const data = (await response.json()) as RestaurantImageUploadResult;
+      const data = (await response.json()) as VendorImageUploadResult;
       return { data };
     } catch {
       return { error: 'Network error' };
     }
   },
 
-  uploadVerificationDocument: async (file: File, documentKey: string) => {
-    const token = await getAuthToken();
-    if (!token) {
-      return { error: 'Not authenticated' };
-    }
+  /** @deprecated Use uploadVendorImage */
+  uploadRestaurantImage: async (
+    file: File,
+    kind: 'logo' | 'cover' | 'menu' | 'document',
+    options?: {
+      restaurantName?: string | null;
+      restaurantId?: string | null;
+      menuItemName?: string | null;
+      documentKey?: string | null;
+    },
+  ) =>
+    vendorApi.uploadVendorImage(file, kind, {
+      businessName: options?.restaurantName,
+      businessId: options?.restaurantId,
+      menuItemName: options?.menuItemName,
+      documentKey: options?.documentKey,
+    }),
 
-    const formData = new FormData();
-    formData.append('kind', 'document');
-    formData.append('document_key', documentKey);
-    formData.append('file', file);
+  uploadVerificationDocument: async (
+    file: File,
+    documentKey: string,
+    options?: { businessName?: string | null; businessId?: string | null },
+  ) => {
+    return vendorApi.uploadVendorImage(file, 'document', {
+      businessName: options?.businessName,
+      businessId: options?.businessId,
+      documentKey,
+    });
+  },
 
-    try {
-      const response = await fetch(`${getApiUrl()}/restaurants/upload-image`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        return { error: (error as { detail?: string }).detail || 'Upload failed' };
-      }
-
-      const data = (await response.json()) as RestaurantImageUploadResult;
-      return { data };
-    } catch {
-      return { error: 'Network error' };
-    }
+  uploadMenuImage: async (
+    file: File,
+    menuItemName: string,
+    options?: { businessName?: string | null; businessId?: string | null },
+  ) => {
+    return vendorApi.uploadVendorImage(file, 'menu', {
+      businessName: options?.businessName,
+      businessId: options?.businessId,
+      menuItemName,
+    });
   },
 
   getBusinessRegistration: async () => {
@@ -130,7 +161,7 @@ export const vendorApi = {
       return { error: 'Not authenticated' };
     }
 
-    return apiRequest<BusinessRegistrationSummary>('/restaurants/registration', { authToken: token });
+    return apiRequest<BusinessRegistrationSummary>('/vendors/registration', { authToken: token });
   },
 
   submitBusinessRegistration: async (data: BusinessRegistrationFormData) => {
@@ -139,7 +170,7 @@ export const vendorApi = {
       return { error: 'Not authenticated' };
     }
 
-    return apiRequest<BusinessRegistrationResult>('/restaurants/registration', {
+    return apiRequest<BusinessRegistrationResult>('/vendors/registration', {
       method: 'POST',
       authToken: token,
       body: JSON.stringify(toBusinessRegistrationPayload(data)),
@@ -152,7 +183,7 @@ export const vendorApi = {
       return { error: 'Not authenticated' };
     }
 
-    return apiRequest<BusinessRegistrationResult>('/restaurants/verification-documents', {
+    return apiRequest<BusinessRegistrationResult>('/vendors/verification-documents', {
       method: 'POST',
       authToken: token,
       body: JSON.stringify({ documents }),

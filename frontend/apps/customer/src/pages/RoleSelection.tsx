@@ -4,7 +4,7 @@ import PageLayout from '../components/PageLayout';
 import {
   CUSTOMER_ROLE,
   RIDER_ROLE,
-  RESTAURANT_ROLE,
+  VENDOR_ROLE,
   setSelectedRole,
 } from '../lib/activeRole';
 
@@ -36,8 +36,8 @@ const RoleSelection: React.FC = () => {
             Rider
           </Button>
 
-          <Button onClick={() => void selectRole(RESTAURANT_ROLE)} variant="accent">
-            Restaurant
+          <Button onClick={() => void selectRole(VENDOR_ROLE)} variant="accent">
+            Vendor
           </Button>
         </div>
       </div>

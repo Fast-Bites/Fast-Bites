@@ -4,6 +4,7 @@ import BusinessDocumentationForm from '@/components/BusinessDocumentationForm';
 import FullScreenLogoLoader from '@/components/FullScreenLogoLoader';
 import {
   RegistrationPageTitle,
+  RegistrationSkipButton,
 } from '@/components/RegistrationHeader';
 import RegistrationPageShell from '@/components/RegistrationPageShell';
 import {
@@ -12,6 +13,7 @@ import {
   type BusinessTypeKey,
 } from '@/lib/businessDocumentation';
 import { vendorApi, vendorAuth } from '@/lib/api';
+import { isDocumentationSkipped, isMenuSetupDone, markDocumentationSkipped } from '@/lib/menuSetup';
 import { resolveVendorPortalPath } from '@/lib/verification';
 
 interface DocumentationLocationState {
@@ -26,9 +28,9 @@ export default function VerifyBusinessDocumentation() {
   const [businessType, setBusinessType] = useState<BusinessTypeKey | null>(
     locationState?.businessType ? normalizeBusinessType(locationState.businessType) : null,
   );
-  const [submitted, setSubmitted] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Skip logo loader when we already have business type from a transition screen.
+  const [loading, setLoading] = useState(!locationState?.businessType);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,11 +58,14 @@ export default function VerifyBusinessDocumentation() {
         return;
       }
 
-      if (profile.verification_stage === 'pending_review') {
-        setSubmitted(true);
+      if (path === '/verify-business/menu') {
+        navigate('/verify-business/menu', { replace: true });
+        return;
       }
 
+      // Arriving from the “Going back to Documentation” transition — UI is ready.
       if (locationState?.businessType) {
+        setBusinessType(normalizeBusinessType(locationState.businessType));
         setLoading(false);
         return;
       }
@@ -78,8 +83,13 @@ export default function VerifyBusinessDocumentation() {
 
       setBusinessType(normalizeBusinessType(result.data.business_type));
 
-      if (result.data.documents_submitted) {
-        setSubmitted(true);
+      // Docs submitted or skipped, menu still outstanding → continue to menu.
+      if (
+        (result.data.documents_submitted || isDocumentationSkipped()) &&
+        !isMenuSetupDone()
+      ) {
+        navigate('/verify-business/menu', { replace: true });
+        return;
       }
 
       setLoading(false);
@@ -92,20 +102,15 @@ export default function VerifyBusinessDocumentation() {
     };
   }, [locationState?.businessType, navigate]);
 
+  const goToMenuSetup = (skipped = false) => {
+    if (skipped) {
+      markDocumentationSkipped();
+    }
+    navigate('/verify-business/menu-processing', { replace: true });
+  };
+
   if (loading) {
     return <FullScreenLogoLoader />;
-  }
-
-  if (submitted) {
-    return (
-      <RegistrationPageShell>
-        <RegistrationPageTitle
-          title="Documents submitted"
-          subtitle="We're reviewing your documents. You'll be notified once verification is complete."
-          className="mb-10"
-        />
-      </RegistrationPageShell>
-    );
   }
 
   if (loadError || !businessType) {
@@ -120,6 +125,10 @@ export default function VerifyBusinessDocumentation() {
 
   return (
     <RegistrationPageShell>
+      <div className="mb-4 flex justify-end">
+        <RegistrationSkipButton onClick={() => goToMenuSetup(true)} />
+      </div>
+
       <RegistrationPageTitle
         title="Documentation"
         subtitle={DOCUMENTATION_PAGE_SUBTITLE}
@@ -129,7 +138,7 @@ export default function VerifyBusinessDocumentation() {
       <section className="flex min-h-0 flex-1 flex-col">
         <BusinessDocumentationForm
           businessType={businessType}
-          onSubmitSuccess={() => setSubmitted(true)}
+          onSubmitSuccess={() => goToMenuSetup(false)}
         />
       </section>
     </RegistrationPageShell>

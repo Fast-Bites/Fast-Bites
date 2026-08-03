@@ -7,8 +7,8 @@ import { auth } from '../lib/api';
 import { getRememberMeCheckboxPreference, persistRememberMeCheckboxPreference } from '../lib/supabase';
 import { getSelectedRole, isValidRole } from '../lib/activeRole';
 import {
-  finalizeRestaurantAuth,
-  isRestaurantRole,
+  finalizeVendorAuth,
+  isVendorRole,
   signupRedirectUrlForRole,
 } from '../lib/vendorRedirect';
 import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
@@ -68,6 +68,7 @@ const SignUpForm: React.FC = () => {
     if (data) {
       // Check if email already exists (Supabase returns user with empty identities)
       if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setLoading(false);
         setError('This email is already registered. Please sign in instead.');
         setShowSignInLink(true);
         return;
@@ -86,8 +87,8 @@ const SignUpForm: React.FC = () => {
       }
 
       // No confirmation needed - continue signup
-      if (isRestaurantRole(selectedRole)) {
-        const result = await finalizeRestaurantAuth();
+      if (isVendorRole(selectedRole)) {
+        const result = await finalizeVendorAuth();
         if (!result.ok) {
           setLoading(false);
           setError(result.error || 'Could not continue to vendor portal.');
@@ -161,10 +162,10 @@ const SignUpForm: React.FC = () => {
             {showSignInLink && (
               <button
                 type="button"
-                onClick={() => navigate('/signin-form')}
+                onClick={() => navigate('/role-selection')}
                 className="mt-1 text-xs text-primary underline"
               >
-                Sign in →
+                Back to role selection →
               </button>
             )}
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Button from '@/components/Button';
+import RegistrationTransitionLoader from '@/components/RegistrationTransitionLoader';
 import {
   type BusinessRegistrationFormData,
 } from '@/lib/businessRegistration';
@@ -66,28 +66,12 @@ export default function VerifyBusinessProcessing() {
     };
   }, [formData, navigate]);
 
-  if (error) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[linear-gradient(135deg,#fef9c3_0%,#e0f2fe_45%,#fecaca_100%)] px-8 text-center">
-        <p className="mb-6 text-base text-gray-900">{error}</p>
-        <Button type="button" variant="primary" onClick={() => navigate('/verify-business')}>
-          Back to form
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center bg-[linear-gradient(135deg,#fef9c3_0%,#e0f2fe_45%,#fecaca_100%)] px-8 text-center"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <div className="animate-zoom-pulse space-y-2 text-gray-900">
-        <p className="text-lg font-normal">Proceeding to</p>
-        <p className="text-4xl font-semibold">Documentation</p>
-      </div>
-    </div>
+    <RegistrationTransitionLoader
+      destination="Documentation"
+      error={error}
+      onErrorAction={() => navigate('/verify-business')}
+      errorActionLabel="Back to form"
+    />
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { vendorAuth, type VendorProfile } from '@/lib/api';
-import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
+import { redirectToCustomerVendorSignIn } from '@/lib/customerAuthRedirect';
+import { isVendorRole } from '@/lib/roles';
 import { isBusinessVerified, resolveVendorPortalPath, vendorVerificationPath, type VendorPortalPath } from '@/lib/verification';
 import FullScreenLogoLoader from '@/components/FullScreenLogoLoader';
 
@@ -25,7 +26,7 @@ export default function VendorProtectedRoute({ children }: VendorProtectedRouteP
       const { data, error } = await vendorAuth.getProfile();
       if (cancelled) return;
 
-      if (error || !data || data.role !== 'restaurant') {
+      if (error || !data || !isVendorRole(data.role)) {
         setStatus('denied');
         return;
       }
@@ -42,7 +43,7 @@ export default function VendorProtectedRoute({ children }: VendorProtectedRouteP
 
   useEffect(() => {
     if (status === 'denied') {
-      redirectToCustomerRestaurantSignIn();
+      redirectToCustomerVendorSignIn();
     }
   }, [status]);
 
@@ -78,16 +79,23 @@ export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
       const { data, error } = await vendorAuth.getProfile();
       if (cancelled) return;
 
-      if (error || !data || data.role !== 'restaurant') {
+      if (error || !data || !isVendorRole(data.role)) {
         setStatus('denied');
         return;
       }
 
       if (!isBusinessVerified(data as VendorProfile)) {
         const path = await resolveVendorPortalPath(data);
-        setRedirectPath(path);
-        setStatus('unverified');
-        return;
+        if (path === '/verify-business' || path === '/verify-business/documentation') {
+          setRedirectPath(path);
+          setStatus('unverified');
+          return;
+        }
+        if (path === '/verify-business/menu') {
+          setRedirectPath(path);
+          setStatus('unverified');
+          return;
+        }
       }
 
       setStatus('allowed');
@@ -102,7 +110,7 @@ export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
 
   useEffect(() => {
     if (status === 'denied') {
-      redirectToCustomerRestaurantSignIn();
+      redirectToCustomerVendorSignIn();
     }
   }, [status]);
 

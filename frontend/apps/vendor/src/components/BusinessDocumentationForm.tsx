@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   RegistrationSectionHeader,
   RegistrationStepFooter,
@@ -41,6 +41,21 @@ export default function BusinessDocumentationForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const isUploading = useMemo(
+    () => Object.values(uploads).some((entry) => entry.uploading),
+    [uploads],
+  );
+
+  const requiredComplete = useMemo(
+    () =>
+      config.documents
+        .filter((doc) => doc.required)
+        .every((doc) => Boolean(uploads[doc.id]?.url)),
+    [config.documents, uploads],
+  );
+
+  const canProceed = requiredComplete && !isUploading && !submitting;
+
   const handleFileSelect = useCallback(async (documentId: string, file: File | null) => {
     if (!file) {
       return;
@@ -69,20 +84,11 @@ export default function BusinessDocumentationForm({
   }, []);
 
   const handleSubmit = async () => {
-    if (submitting) {
+    if (!canProceed) {
       return;
     }
 
     setSubmitError(null);
-
-    const missingRequired = config.documents.filter(
-      (doc) => doc.required && !uploads[doc.id]?.url,
-    );
-
-    if (missingRequired.length > 0) {
-      setSubmitError(`Please upload: ${missingRequired.map((doc) => doc.label).join(', ')}`);
-      return;
-    }
 
     const documents = Object.fromEntries(
       config.documents
@@ -130,6 +136,7 @@ export default function BusinessDocumentationForm({
       <RegistrationStepFooter
         onNext={() => void handleSubmit()}
         label={submitting ? 'Submitting…' : 'Next'}
+        disabled={!canProceed}
       />
     </>
   );

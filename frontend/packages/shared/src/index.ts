@@ -7,4 +7,4 @@ export const colors = {
   popupGreen: '#00ff00',
 } as const;
 
-export type UserRole = 'customer' | 'rider' | 'restaurant';
+export type UserRole = 'customer' | 'rider' | 'vendor';

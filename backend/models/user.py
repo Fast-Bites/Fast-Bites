@@ -18,7 +18,7 @@ class User(Base):
     google_id = Column(String(255), unique=True, nullable=True)  # For Google OAuth
     
     # Profile fields
-    role = Column(String(20), default="customer")  # customer, rider, restaurant
+    role = Column(String(20), default="customer")  # customer, rider, vendor
     profile_image = Column(Text)
     address = Column(Text)
     city = Column(String(100))

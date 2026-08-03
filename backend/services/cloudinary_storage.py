@@ -14,6 +14,16 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_DOCUMENT_CONTENT_TYPES = ALLOWED_CONTENT_TYPES | {"application/pdf"}
+ALLOWED_MENU_FILE_CONTENT_TYPES = ALLOWED_CONTENT_TYPES | {
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+    "application/csv",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
 ALLOWED_KINDS = {"logo", "cover", "document", "menu"}
 
 
@@ -74,26 +84,30 @@ def upload_folder_for(
     user_id: str,
     document_key: str | None = None,
     *,
+    business_id: str | None = None,
+    business_name: str | None = None,
+    menu_item_name: str | None = None,
     restaurant_id: str | None = None,
     restaurant_name: str | None = None,
-    menu_item_name: str | None = None,
 ) -> str:
     """
     Cloudinary layout for easy browsing:
 
-    fast_bites/restaurants/vendors/{restaurant_slug}/logo
-    fast_bites/restaurants/vendors/{restaurant_slug}/cover
-    fast_bites/restaurants/vendors/{restaurant_slug}/menu/{item_slug}
-    fast_bites/restaurants/vendors/{restaurant_slug}/documents/{key}
+    fast_bites/vendors/{business_slug}/logo
+    fast_bites/vendors/{business_slug}/cover
+    fast_bites/vendors/{business_slug}/menu/{item_slug}
+    fast_bites/vendors/{business_slug}/documents/{key}
 
-    Registration uploads (before a restaurant row exists) still use:
-    fast_bites/restaurants/{user_id}/logos|covers|documents/...
+    Registration uploads (before a business row exists) still use:
+    fast_bites/{user_id}/logos|covers|documents/...
     """
     base = settings.CLOUDINARY_UPLOAD_FOLDER.strip().rstrip("/")
+    resolved_business_id = business_id or restaurant_id
+    resolved_business_name = business_name or restaurant_name
 
-    if restaurant_id or restaurant_name:
-        vendor_key = _slugify(restaurant_name or "", fallback="") or _slugify(
-            restaurant_id or "", fallback="vendor"
+    if resolved_business_id or resolved_business_name:
+        vendor_key = _slugify(resolved_business_name or "", fallback="") or _slugify(
+            resolved_business_id or "", fallback="vendor"
         )
         vendor_root = f"{base}/vendors/{vendor_key}"
 
@@ -118,15 +132,17 @@ def upload_folder_for(
     return f"{base}/{safe_user_id}/documents/{safe_key}"
 
 
-async def upload_restaurant_image(
+async def upload_vendor_image(
     file: UploadFile,
     kind: str,
     user_id: str,
     document_key: str | None = None,
     *,
+    business_id: str | None = None,
+    business_name: str | None = None,
+    menu_item_name: str | None = None,
     restaurant_id: str | None = None,
     restaurant_name: str | None = None,
-    menu_item_name: str | None = None,
 ) -> dict[str, str]:
     if kind not in ALLOWED_KINDS:
         raise HTTPException(status_code=400, detail="Invalid image kind")
@@ -135,22 +151,30 @@ async def upload_restaurant_image(
         raise HTTPException(status_code=400, detail="document_key is required for document uploads")
 
     content_type = (file.content_type or "").lower()
-    allowed_types = ALLOWED_DOCUMENT_CONTENT_TYPES if kind == "document" else ALLOWED_CONTENT_TYPES
+    if kind == "document":
+        allowed_types = ALLOWED_DOCUMENT_CONTENT_TYPES
+    elif kind == "menu":
+        allowed_types = ALLOWED_MENU_FILE_CONTENT_TYPES
+    else:
+        allowed_types = ALLOWED_CONTENT_TYPES
     if content_type not in allowed_types:
-        detail = (
-            "Only JPEG, PNG, WEBP, GIF, or PDF files are allowed"
-            if kind == "document"
-            else "Only JPEG, PNG, WEBP, or GIF images are allowed"
-        )
+        if kind == "document":
+            detail = "Only JPEG, PNG, WEBP, GIF, or PDF files are allowed"
+        elif kind == "menu":
+            detail = "Only JPEG, PNG, WEBP, GIF, PDF, Word, CSV, Excel, or TXT files are allowed"
+        else:
+            detail = "Only JPEG, PNG, WEBP, or GIF images are allowed"
         raise HTTPException(status_code=400, detail=detail)
 
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    max_bytes = MAX_DOCUMENT_BYTES if kind == "document" else MAX_IMAGE_BYTES
+    is_raw_menu_file = kind == "menu" and content_type not in ALLOWED_CONTENT_TYPES
+    use_document_limits = kind == "document" or is_raw_menu_file
+    max_bytes = MAX_DOCUMENT_BYTES if use_document_limits else MAX_IMAGE_BYTES
     if len(data) > max_bytes:
-        limit = "10MB" if kind == "document" else "5MB"
+        limit = "10MB" if use_document_limits else "5MB"
         raise HTTPException(status_code=400, detail=f"File must be {limit} or smaller")
 
     configure_cloudinary()
@@ -158,11 +182,13 @@ async def upload_restaurant_image(
         kind,
         user_id,
         document_key=document_key,
+        business_id=business_id,
+        business_name=business_name,
+        menu_item_name=menu_item_name,
         restaurant_id=restaurant_id,
         restaurant_name=restaurant_name,
-        menu_item_name=menu_item_name,
     )
-    resource_type = "auto" if kind == "document" else "image"
+    resource_type = "auto" if kind == "document" or is_raw_menu_file else "image"
     public_id = None
     if kind == "menu" and menu_item_name:
         public_id = _slugify(menu_item_name)
@@ -195,24 +221,32 @@ async def upload_restaurant_image(
     return {"url": secure_url, "public_id": public_id_result}
 
 
+upload_restaurant_image = upload_vendor_image
+
+
 def upload_image_from_url(
     image_url: str,
     *,
     kind: str,
-    restaurant_id: str,
-    restaurant_name: str,
+    business_id: str,
+    business_name: str,
     menu_item_name: str | None = None,
+    restaurant_id: str | None = None,
+    restaurant_name: str | None = None,
 ) -> dict[str, str]:
     """Upload a remote image URL into the vendor folder structure (used by seed scripts)."""
     if kind not in ALLOWED_KINDS:
         raise ValueError(f"Invalid kind: {kind}")
 
+    resolved_business_id = business_id or restaurant_id or ""
+    resolved_business_name = business_name or restaurant_name or ""
+
     configure_cloudinary()
     folder = upload_folder_for(
         kind,
-        user_id=restaurant_id,
-        restaurant_id=restaurant_id,
-        restaurant_name=restaurant_name,
+        user_id=resolved_business_id,
+        business_id=resolved_business_id,
+        business_name=resolved_business_name,
         menu_item_name=menu_item_name,
     )
     public_id = _slugify(menu_item_name) if kind == "menu" and menu_item_name else kind

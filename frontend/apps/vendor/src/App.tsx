@@ -6,6 +6,9 @@ import VendorRegistrationGate from '@/components/VendorRegistrationGate';
 import VerifyBusiness from '@/pages/VerifyBusiness';
 import VerifyBusinessProcessing from '@/pages/VerifyBusinessProcessing';
 import VerifyBusinessDocumentation from '@/pages/VerifyBusinessDocumentation';
+import VerifyBusinessMenuProcessing from '@/pages/VerifyBusinessMenuProcessing';
+import VerifyBusinessDocumentationProcessing from '@/pages/VerifyBusinessDocumentationProcessing';
+import MenuSetup from '@/pages/MenuSetup';
 import VendorEntryRedirect from '@/pages/VendorEntryRedirect';
 import CustomerSignInRedirect from '@/pages/CustomerSignInRedirect';
 import Dashboard, { HoursPage, MenuPage, OrdersPage } from '@/pages/VendorPages';
@@ -43,6 +46,30 @@ export default function App() {
             element={
               <VendorProtectedRoute>
                 <VerifyBusinessDocumentation />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-business/menu-processing"
+            element={
+              <VendorProtectedRoute>
+                <VerifyBusinessMenuProcessing />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-business/documentation-processing"
+            element={
+              <VendorProtectedRoute>
+                <VerifyBusinessDocumentationProcessing />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-business/menu"
+            element={
+              <VendorProtectedRoute>
+                <MenuSetup />
               </VendorProtectedRoute>
             }
           />

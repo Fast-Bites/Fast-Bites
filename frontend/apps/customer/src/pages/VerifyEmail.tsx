@@ -5,8 +5,7 @@ import PageLayout from '../components/PageLayout';
 import LogoHeader from '../components/LogoHeader';
 import ResendOverlay from '../components/ResendOverlay';
 import { auth } from '../lib/api';
-import { finalizeRestaurantAuth, getSelectedRole, isRestaurantRole } from '../lib/vendorRedirect';
-import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
+import { finalizeVendorAuth, getSelectedRole, isVendorRole } from '../lib/vendorRedirect';
 
 // Helper to extract seconds from error message like "...after 58 seconds"
 const extractSecondsFromError = (error: string): number | null => {
@@ -50,8 +49,8 @@ const VerifyEmail: React.FC = () => {
     }
 
     if (data) {
-      if (isRestaurantRole(getSelectedRole())) {
-        const result = await finalizeRestaurantAuth();
+      if (isVendorRole(getSelectedRole())) {
+        const result = await finalizeVendorAuth();
         if (!result.ok) {
           setLoading(false);
           setError(result.error || 'Could not continue to vendor portal.');
@@ -70,13 +69,12 @@ const VerifyEmail: React.FC = () => {
   }, [email, navigate]);
 
   // Auto-submit when all 6 digits are filled
-  const isOtpComplete = otp.every(digit => digit !== '');
+  const isOtpComplete = otp.every((digit) => digit !== '');
   useEffect(() => {
-    if (isOtpComplete) {
+    if (isOtpComplete && !loading) {
       handleSubmit(otp);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOtpComplete]);
+  }, [isOtpComplete, loading, handleSubmit, otp]);
 
   const handleChange = (index: number, value: string) => {
     if (value.length > 1) return;
@@ -121,8 +119,8 @@ const VerifyEmail: React.FC = () => {
     setOverlayVisible(true);
   };
 
-  if (loading) {
-    return <FullScreenLogoLoader />;
+  if (!email) {
+    return null;
   }
 
   return (
@@ -154,7 +152,8 @@ const VerifyEmail: React.FC = () => {
             value={digit}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            className="w-12 h-12 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary"
+            disabled={loading}
+            className="w-12 h-12 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary disabled:opacity-50"
           />
         ))}
       </div>
@@ -167,12 +166,11 @@ const VerifyEmail: React.FC = () => {
       <Button 
         type="button"
         onClick={() => handleSubmit(otp)}
-        disabled={loading || otp.some(d => !d)}
-        disabledStyle={false}
+        disabled={!isOtpComplete || loading}
         variant="primary"
         className="mb-4"
       >
-        Continue
+        {loading ? 'Verifying...' : 'Continue'}
       </Button>
 
       {/* Resend Code */}

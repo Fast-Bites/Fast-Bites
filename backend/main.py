@@ -11,6 +11,7 @@ from routers import (
     orders_router,
     support_router,
     vendor_business_router,
+    legacy_vendor_router,
 )
 from database import init_db
 from config import settings
@@ -44,6 +45,7 @@ app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(support_router)
 app.include_router(vendor_business_router)
+app.include_router(legacy_vendor_router)
 
 @app.get("/")
 async def root():

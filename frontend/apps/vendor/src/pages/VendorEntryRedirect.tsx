@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { vendorAuth } from '@/lib/api';
-import { redirectToCustomerRestaurantSignIn } from '@/lib/customerAuthRedirect';
+import { redirectToCustomerVendorSignIn } from '@/lib/customerAuthRedirect';
+import { isVendorRole } from '@/lib/roles';
 import { resolveVendorPortalPath, type VendorPortalPath } from '@/lib/verification';
 import FullScreenLogoLoader from '@/components/FullScreenLogoLoader';
 
@@ -21,7 +22,7 @@ export default function VendorEntryRedirect() {
       const { data, error } = await vendorAuth.getProfile();
       if (cancelled) return;
 
-      if (error || !data || data.role !== 'restaurant') {
+      if (error || !data || !isVendorRole(data.role)) {
         setTarget('sign-in');
         return;
       }
@@ -38,7 +39,7 @@ export default function VendorEntryRedirect() {
 
   useEffect(() => {
     if (target === 'sign-in') {
-      redirectToCustomerRestaurantSignIn();
+      redirectToCustomerVendorSignIn();
     }
   }, [target]);
 

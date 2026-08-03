@@ -20,7 +20,7 @@ export default function Dashboard() {
   return (
     <PlaceholderPage
       title="Dashboard"
-      description="Overview of today’s orders, prep queue, and restaurant status will live here."
+      description="Overview of today’s orders, prep queue, and business status will live here."
     />
   );
 }
@@ -29,7 +29,7 @@ export function OrdersPage() {
   return (
     <PlaceholderPage
       title="Orders"
-      description="Incoming, in-progress, and completed orders for your restaurant will be managed here."
+      description="Incoming, in-progress, and completed orders for your business will be managed here."
     />
   );
 }
@@ -38,7 +38,7 @@ export function MenuPage() {
   return (
     <PlaceholderPage
       title="Menu"
-      description="Add meals, sizes, extras, availability, and pricing for your restaurant menu."
+      description="Add products, sizes, extras, availability, and pricing for your catalog."
     />
   );
 }

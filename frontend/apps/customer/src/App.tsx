@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MobileOnly from './components/MobileOnly';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
@@ -36,7 +36,7 @@ import DepositSuccess from './pages/DepositSuccess';
 import Cart from './pages/Cart';
 import Order from './pages/Order';
 import Logout from './pages/Logout';
-import RestaurantAuthComplete from './pages/RestaurantAuthComplete';
+import VendorAuthComplete from './pages/VendorAuthComplete';
 import './App.css';
 
 function App() {
@@ -54,7 +54,8 @@ function App() {
           <Route path="/signup-form" element={<SignUpForm />} />
           <Route path="/email-sent" element={<EmailSent />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/restaurant-auth-complete" element={<ProtectedRoute guard="session"><RestaurantAuthComplete /></ProtectedRoute>} />
+          <Route path="/vendor-auth-complete" element={<ProtectedRoute guard="session"><VendorAuthComplete /></ProtectedRoute>} />
+          <Route path="/restaurant-auth-complete" element={<Navigate to="/vendor-auth-complete" replace />} />
           <Route path="/signin-form" element={<SignInForm />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />

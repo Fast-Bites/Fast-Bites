@@ -223,7 +223,8 @@ const ForgotPassword: React.FC = () => {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-12 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary"
+                disabled={loading}
+                className="w-12 h-12 bg-[hsl(0_0%_19%)] border-2 border-primary rounded-xl text-foreground text-center text-xl font-semibold focus:outline-none focus:border-primary disabled:opacity-50"
               />
             ))}
           </div>
@@ -236,12 +237,11 @@ const ForgotPassword: React.FC = () => {
           <Button 
             type="button"
             onClick={handleVerifyOtp}
-            disabled={loading || otp.some(d => !d)}
-            disabledStyle={false}
+            disabled={!isOtpComplete || loading}
             variant="primary"
             className="mb-4"
           >
-            Continue
+            {loading ? 'Verifying...' : 'Continue'}
           </Button>
 
           {/* Resend Code */}
