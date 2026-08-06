@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import RegistrationTransitionLoader from '@/components/RegistrationTransitionLoader';
-import {
-  type BusinessRegistrationFormData,
-} from '@/lib/businessRegistration';
+import { type BusinessRegistrationFormData } from '@/lib/businessRegistration';
+import { setCachedBusinessType } from '@/lib/businessDocumentation';
 import { vendorApi, vendorAuth } from '@/lib/api';
 import { resolveVendorPortalPath } from '@/lib/verification';
 
@@ -49,6 +48,7 @@ export default function VerifyBusinessProcessing() {
             return;
           }
 
+          setCachedBusinessType(formData.businessType);
           navigate('/verify-business/documentation', {
             replace: true,
             state: { businessType: formData.businessType },

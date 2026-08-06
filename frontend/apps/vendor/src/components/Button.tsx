@@ -28,9 +28,9 @@ const Button: React.FC<ButtonProps> = ({
   const baseStyles = 'w-full mx-auto rounded-full transition-opacity';
 
   const variantStyles = {
-    primary: 'py-3 text-lg font-medium bg-primary text-primary-foreground hover:opacity-90 active:opacity-80',
-    foreground: 'py-3 text-lg font-medium bg-foreground text-background hover:opacity-90 active:opacity-80',
-    accent: 'py-3 text-lg font-medium bg-accent text-accent-foreground hover:opacity-90 active:opacity-80',
+    primary: 'py-3 text-lg font-medium bg-primary text-primary-foreground hover:opacity-90 active:opacity-80 max-[500px]:py-2.5 max-[500px]:text-base',
+    foreground: 'py-3 text-lg font-medium bg-foreground text-background hover:opacity-90 active:opacity-80 max-[500px]:py-2.5 max-[500px]:text-base',
+    accent: 'py-3 text-lg font-medium bg-accent text-accent-foreground hover:opacity-90 active:opacity-80 max-[500px]:py-2.5 max-[500px]:text-base',
     appGreen:
       'py-4 text-lg font-normal bg-app-green text-white hover:opacity-90 active:opacity-80',
     outlineAppGreen:

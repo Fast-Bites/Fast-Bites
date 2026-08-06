@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Any, Dict, List, Optional
 
 
@@ -10,6 +10,8 @@ class CartItemResponse(BaseModel):
     quantity: int
     image: Optional[str] = None
     section: Optional[str] = None
+    product_id: Optional[str] = None
+    # Legacy alias for older clients
     menu_item_id: Optional[str] = None
     options_json: Dict[str, Any] = Field(default_factory=dict)
 
@@ -27,7 +29,8 @@ class CartListResponse(BaseModel):
 
 class CartItemCreate(BaseModel):
     restaurant_id: str
-    menu_item_id: Optional[str] = None
+    product_id: Optional[str] = None
+    menu_item_id: Optional[str] = None  # legacy alias
     name: str
     description: Optional[str] = None
     unit_price: float = Field(gt=0)
@@ -36,6 +39,12 @@ class CartItemCreate(BaseModel):
     section: Optional[str] = None
     options_json: Dict[str, Any] = {}
     special_instructions: Optional[str] = None
+
+    @model_validator(mode="after")
+    def prefer_product_id(self):
+        if not self.product_id and self.menu_item_id:
+            self.product_id = self.menu_item_id
+        return self
 
 
 class CartItemQuantityUpdate(BaseModel):

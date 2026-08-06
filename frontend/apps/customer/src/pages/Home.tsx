@@ -130,6 +130,7 @@ const Home: React.FC = () => {
     const result = await quickAddToCart({
       restaurant_id: meal.restaurant_id,
       menu_item_id: meal.id,
+      product_id: meal.id,
       name: meal.name,
       unit_price: meal.unitPrice,
       image_url: meal.image,

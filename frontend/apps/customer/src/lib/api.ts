@@ -229,8 +229,12 @@ export const api = {
   deleteCartRestaurant: (restaurantId: string) =>
     request(`/cart/restaurants/${restaurantId}`, { method: 'DELETE' }, true),
 
+  removeProductFromCart: (productId: string) =>
+    request(`/cart/products/${productId}`, { method: 'DELETE' }, true),
+
+  /** @deprecated use removeProductFromCart */
   removeMenuItemFromCart: (menuItemId: string) =>
-    request(`/cart/menu-items/${menuItemId}`, { method: 'DELETE' }, true),
+    request(`/cart/products/${menuItemId}`, { method: 'DELETE' }, true),
 
   getOrderSummary: () => request('/orders/summary', {}, true),
 
@@ -259,9 +263,14 @@ export const api = {
       body: JSON.stringify(data),
     }, true),
 
-  getRestaurantMenuByCategory: (restaurantId: string, category: 'food' | 'drinks') =>
+  getRestaurantMenuByCategory: (restaurantId: string, category: string) =>
     request<RestaurantMenuItemDto[]>(
-      `/menu/restaurants/${restaurantId}/items?category=${category}`,
+      `/menu/restaurants/${restaurantId}/items?category=${encodeURIComponent(category)}`,
+    ),
+
+  getPlatformCategories: (businessType = 'Restaurant') =>
+    request<PlatformCategoryDto[]>(
+      `/menu/platform-categories?business_type=${encodeURIComponent(businessType)}`,
     ),
 
   getRestaurantHours: (restaurantId: string) =>
@@ -316,6 +325,15 @@ export interface Restaurant {
   hours_status?: string | null;
   operating_hours_text?: string | null;
   avg_delivery_minutes?: number | null;
+  business_type?: string | null;
+}
+
+export interface PlatformCategoryDto {
+  id: string;
+  business_type: string;
+  slug: string;
+  name: string;
+  sort_order: number;
 }
 
 export interface RestaurantMenuItemDto {
@@ -325,6 +343,9 @@ export interface RestaurantMenuItemDto {
   image?: string;
   delivery_minutes?: number;
   description?: string;
+  category?: string;
+  vendor_category?: string;
+  platform_category_id?: string;
 }
 
 export default api;

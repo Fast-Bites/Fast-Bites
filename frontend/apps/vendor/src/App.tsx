@@ -50,7 +50,7 @@ export default function App() {
             }
           />
           <Route
-            path="/verify-business/menu-processing"
+            path="/verify-business/catalog-processing"
             element={
               <VendorProtectedRoute>
                 <VerifyBusinessMenuProcessing />
@@ -66,12 +66,21 @@ export default function App() {
             }
           />
           <Route
-            path="/verify-business/menu"
+            path="/verify-business/catalog"
             element={
               <VendorProtectedRoute>
                 <MenuSetup />
               </VendorProtectedRoute>
             }
+          />
+          {/* Legacy menu setup URLs */}
+          <Route
+            path="/verify-business/menu-processing"
+            element={<Navigate to="/verify-business/catalog-processing" replace />}
+          />
+          <Route
+            path="/verify-business/menu"
+            element={<Navigate to="/verify-business/catalog" replace />}
           />
 
           <Route

@@ -1,9 +1,12 @@
 import { Fragment, type ReactNode } from 'react';
 import Button from '@/components/Button';
-import { registrationBackgroundUrl } from '@/components/RegistrationPageShell';
+import {
+  registrationBackgroundUrl,
+  registrationPageXBleedClassName,
+} from '@/components/RegistrationPageShell';
 
 /** Space between the Next button and the bottom of the screen — try pb-8, pb-10, pb-12, pb-16 */
-export const registrationNextBottomSpacingClassName = 'pb-10';
+export const registrationNextBottomSpacingClassName = 'pb-10 max-[500px]:pb-6';
 
 export const registrationStepFooterClassName = `mt-auto shrink-0 pt-6 ${registrationNextBottomSpacingClassName}`;
 
@@ -13,32 +16,43 @@ export const registrationStickyStepFooterClassName = [
   registrationNextBottomSpacingClassName,
 ].join(' ');
 
-/** Full width of the mother page column (not wider than the page). */
-export const registrationStickyStepFooterDividerClassName = 'mb-2.5 w-full border-gray-400';
+/**
+ * Touches the mixed-color background parent left/right edges
+ * (bleeds past the content side margin). `mb-6` lifts the line from Next.
+ */
+export const registrationStickyStepFooterDividerClassName = [
+  registrationPageXBleedClassName,
+  'mb-6 w-auto border-gray-400',
+].join(' ');
 export const registrationPageHeaderClassName = 'text-center';
 
-export const registrationPageTitleClassName = 'text-4xl font-bold text-gray-900';
+export const registrationPageTitleClassName =
+  'text-4xl font-bold text-gray-900 max-[500px]:text-2xl';
 
-export const registrationPageSubtitleClassName = 'mt-2 text-base text-gray-600';
+export const registrationPageSubtitleClassName =
+  'mt-2 text-base text-gray-600 max-[500px]:mt-1 max-[500px]:text-sm';
 
 export const registrationStepperClassName =
-  'mx-auto mt-7 mb-10 flex w-full max-w-[100%] items-center sm:max-w-[65%]';
+  'mx-auto mt-7 mb-10 flex w-full max-w-[100%] items-center sm:max-w-[65%] max-[500px]:mt-4 max-[500px]:mb-6';
 
 export const registrationStepCircleActiveClassName =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-white';
+  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-base font-semibold text-white max-[500px]:h-8 max-[500px]:w-8 max-[500px]:text-sm';
 
 export const registrationStepCircleClassName =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-400 bg-transparent text-base font-semibold text-gray-400';
+  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-400 bg-transparent text-base font-semibold text-gray-400 max-[500px]:h-8 max-[500px]:w-8 max-[500px]:text-sm';
 
 export const registrationStepConnectorClassName = 'mx-1 h-px min-w-2 flex-1 bg-gray-400';
 
 export const registrationStepConnectorActiveClassName = 'mx-1 h-px min-w-2 flex-1 bg-primary';
 
-export const registrationSectionTitleClassName = 'text-2xl font-bold text-gray-900';
+export const registrationSectionTitleClassName =
+  'text-2xl font-bold text-gray-900 max-[500px]:text-xl';
 
-export const registrationSectionDescriptionClassName = 'text-base text-gray-600';
+export const registrationSectionDescriptionClassName =
+  'text-base text-gray-600 max-[500px]:text-sm';
 
-export const registrationSectionDividerClassName = 'mt-1 mb-6 border-gray-400';
+export const registrationSectionDividerClassName =
+  'mt-1 mb-6 border-gray-400 max-[500px]:mb-4';
 
 export const registrationTextLinkClassName =
   'text-xs font-normal text-blue-600 underline-offset-2 hover:underline';

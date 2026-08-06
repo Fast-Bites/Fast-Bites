@@ -31,3 +31,5 @@ class Restaurant(Base):
     business_verified = Column(Boolean, default=False, nullable=False)
     verification_submitted_at = Column(DateTime(timezone=True), nullable=True)
     verification_documents = Column(JSONB, nullable=True)
+    documentation_skipped_at = Column(DateTime(timezone=True), nullable=True)
+    catalog_setup_completed_at = Column(DateTime(timezone=True), nullable=True)

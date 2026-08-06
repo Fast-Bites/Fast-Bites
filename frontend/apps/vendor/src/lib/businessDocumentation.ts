@@ -59,6 +59,23 @@ export function normalizeBusinessType(value: string | null | undefined): Busines
   return match ?? 'Restaurant';
 }
 
+/** Cached so catalog setup does not flash “Menu Setup” before the real type loads. */
+export const VENDOR_BUSINESS_TYPE_KEY = 'vendor_business_type';
+
+export function getCachedBusinessType(): BusinessTypeKey | null {
+  const raw = sessionStorage.getItem(VENDOR_BUSINESS_TYPE_KEY);
+  if (!raw) {
+    return null;
+  }
+  return normalizeBusinessType(raw);
+}
+
+export function setCachedBusinessType(value: string | null | undefined): BusinessTypeKey {
+  const type = normalizeBusinessType(value);
+  sessionStorage.setItem(VENDOR_BUSINESS_TYPE_KEY, type);
+  return type;
+}
+
 export function getDocumentationConfig(businessType: string | null | undefined): BusinessDocumentationConfig {
   return BUSINESS_DOCUMENTATION[normalizeBusinessType(businessType)];
 }

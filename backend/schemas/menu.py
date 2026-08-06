@@ -20,6 +20,18 @@ class RestaurantResponse(BaseModel):
     hours_status: Optional[str] = None
     operating_hours_text: Optional[str] = None
     avg_delivery_minutes: Optional[int] = None
+    business_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PlatformCategoryResponse(BaseModel):
+    id: UUID
+    business_type: str
+    slug: str
+    name: str
+    sort_order: int = 0
 
     class Config:
         from_attributes = True
@@ -36,13 +48,18 @@ class MenuItemResponse(BaseModel):
     is_available: Optional[bool] = True
     created_at: Optional[datetime] = None
     delivery_time: Optional[int] = None  # in minutes
+    # Platform category slug (from platform_categories via platform_category_id)
+    category: Optional[str] = None
+    vendor_category: Optional[str] = None
+    platform_category_id: Optional[UUID] = None
 
     class Config:
         from_attributes = True
 
 
 class MenuItemWithRestaurant(BaseModel):
-    """Menu item with restaurant name included"""
+    """Catalog item with store name included."""
+
     id: UUID
     name: str
     description: Optional[str] = None
@@ -51,8 +68,10 @@ class MenuItemWithRestaurant(BaseModel):
     is_available: Optional[bool] = True
     restaurant_name: Optional[str] = None
     restaurant_id: Optional[UUID] = None
-    delivery_time: Optional[int] = None  # in minutes
+    delivery_time: Optional[int] = None
+    category: Optional[str] = None
+    vendor_category: Optional[str] = None
+    platform_category_id: Optional[UUID] = None
 
     class Config:
         from_attributes = True
-

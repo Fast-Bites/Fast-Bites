@@ -1,20 +1,23 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-export const formFieldWrapperClassName = 'block space-y-2 bg-transparent';
+export const formFieldWrapperClassName =
+  'block space-y-2 bg-transparent max-[500px]:space-y-1.5';
 
-export const formLabelClassName = 'text-lg font-regular text-black';
+export const formLabelClassName =
+  'text-lg font-regular text-black max-[500px]:text-sm';
 
 export const formInputClassName =
-  'w-full rounded-lg border border-gray-400 bg-white px-5 py-3 text-base text-black outline-none transition placeholder:text-gray-400 focus:border-primary [background-color:#fff] [color-scheme:light]';
+  'w-full rounded-lg border border-gray-400 bg-white px-5 py-3 text-base text-black outline-none transition placeholder:text-gray-400 focus:border-primary [background-color:#fff] [color-scheme:light] max-[500px]:rounded-md max-[500px]:px-3 max-[500px]:py-2 max-[500px]:text-sm';
 
-export const formHintClassName = 'bg-transparent text-sm text-gray-400';
+export const formHintClassName = 'bg-transparent text-sm text-gray-400 max-[500px]:text-xs';
 
-export const formLabelNoteClassName = 'text-sm font-regular text-gray-400';
+export const formLabelNoteClassName =
+  'text-sm font-regular text-gray-400 max-[500px]:text-xs';
 
 interface FormFieldProps {
   label: string;
-  labelNote?: string;
+  labelNote?: ReactNode;
   required?: boolean;
   children: ReactNode;
   hint?: ReactNode;
@@ -79,15 +82,15 @@ export function FormCurrencyInput({
         .filter(Boolean)
         .join(' ')}
     >
-      <span className="flex shrink-0 items-center px-3 text-base text-gray-400" aria-hidden>
+      <span className="flex shrink-0 items-center px-3 text-base text-gray-400 max-[500px]:px-2 max-[500px]:text-sm" aria-hidden>
         {currencySymbol}
       </span>
-      <span className="h-5 w-px shrink-0 bg-gray-300" aria-hidden />
+      <span className="h-5 w-px shrink-0 bg-gray-300 max-[500px]:h-4" aria-hidden />
       <input
         {...props}
         type="text"
         inputMode="decimal"
-        className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-black outline-none placeholder:text-gray-400 [background-color:#fff] [color-scheme:light]"
+        className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-base text-black outline-none placeholder:text-gray-400 [background-color:#fff] [color-scheme:light] max-[500px]:px-2 max-[500px]:py-2 max-[500px]:text-sm"
       />
     </div>
   );

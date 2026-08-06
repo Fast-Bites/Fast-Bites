@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
-from typing import List
+from typing import List, Literal
+
 
 class Settings(BaseSettings):
     DATABASE_URL: str = ""
@@ -17,7 +18,16 @@ class Settings(BaseSettings):
     CLOUDINARY_UPLOAD_FOLDER: str = "fast_bites/restaurants"
     # Set to "production" to disable localhost origins
     ENVIRONMENT: str = "development"
-    
+
+    # LLM — switch with LLM_PROVIDER=groq | openai
+    LLM_PROVIDER: Literal["groq", "openai"] = "groq"
+    OPENAI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_VISION_MODEL: str = "gpt-4o-mini"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_VISION_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS_ORIGINS into a list"""
@@ -29,11 +39,9 @@ class Settings(BaseSettings):
                 if dev not in origins:
                     origins.append(dev)
         return origins
-    
+
     class Config:
         env_file = str(Path(__file__).resolve().parent / ".env")
 
+
 settings = Settings()
-
-
-

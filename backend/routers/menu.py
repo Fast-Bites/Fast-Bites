@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text, func
+from sqlalchemy import select, text, func, or_
 from typing import List, Optional
 from uuid import UUID
 from collections import defaultdict
@@ -9,7 +9,13 @@ from database import get_db
 from models.restaurant import Restaurant
 from models.menu_item import MenuItem
 from models.restaurant_hours import RestaurantHours
-from schemas.menu import RestaurantResponse, MenuItemResponse, MenuItemWithRestaurant
+from models.platform_category import PlatformCategory
+from schemas.menu import (
+    RestaurantResponse,
+    MenuItemResponse,
+    MenuItemWithRestaurant,
+    PlatformCategoryResponse,
+)
 from schemas.menu_extras import (
     RestaurantHoursResponse,
     RestaurantHoursDay,
@@ -21,6 +27,22 @@ from schemas.menu_extras import (
 from services.restaurant_hours_util import HoursRow, compute_hours_display
 
 router = APIRouter(prefix="/menu", tags=["menu"])
+
+# Customer app UI is restaurant-only for now.
+_CUSTOMER_RESTAURANT_TYPES = ("restaurant",)
+
+
+def _is_customer_restaurant(business_type: str | None) -> bool:
+    if not business_type or not str(business_type).strip():
+        return True
+    return str(business_type).strip().lower() in _CUSTOMER_RESTAURANT_TYPES
+
+
+def _customer_restaurant_clause():
+    return or_(
+        Restaurant.business_type.is_(None),
+        func.lower(Restaurant.business_type) == "restaurant",
+    )
 
 
 def _hours_rows_from_db(rows: list[RestaurantHours]) -> list[HoursRow]:
@@ -96,6 +118,7 @@ def _to_restaurant_response(
         latitude=r.latitude,
         longitude=r.longitude,
         image_url=r.image_url,
+        logo_url=getattr(r, "logo_url", None),
         rating=r.rating,
         is_open=r.is_open,
         created_at=r.created_at,
@@ -103,6 +126,7 @@ def _to_restaurant_response(
         hours_status=hours_status,
         operating_hours_text=operating_text,
         avg_delivery_minutes=avg_delivery,
+        business_type=getattr(r, "business_type", None),
     )
 
 
@@ -112,9 +136,10 @@ async def get_restaurants(
     offset: int = 0,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all restaurants with live open/closed status from restaurant_hours."""
+    """Get restaurants only (shops/pharmacy/market hidden until customer UI exists)."""
     result = await db.execute(
         select(Restaurant)
+        .where(_customer_restaurant_clause())
         .order_by(Restaurant.name)
         .limit(limit)
         .offset(offset)
@@ -143,7 +168,7 @@ async def get_restaurant(
         select(Restaurant).where(Restaurant.id == restaurant_id)
     )
     restaurant = result.scalar_one_or_none()
-    if not restaurant:
+    if not restaurant or not _is_customer_restaurant(getattr(restaurant, "business_type", None)):
         raise HTTPException(status_code=404, detail="Restaurant not found")
     hours_map = await _load_hours_by_restaurant(db, [restaurant_id])
     delivery_map = await _load_avg_delivery_by_restaurant(db, [restaurant_id])
@@ -161,7 +186,7 @@ async def get_menu_items(
     restaurant_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get menu items with restaurant names"""
+    """Get restaurant menu products only (other vendor types excluded for now)."""
     query = (
         select(
             MenuItem.id,
@@ -172,10 +197,14 @@ async def get_menu_items(
             MenuItem.is_available,
             MenuItem.restaurant_id,
             MenuItem.delivery_time,
+            MenuItem.vendor_category,
+            MenuItem.platform_category_id,
+            PlatformCategory.slug.label("category"),
             Restaurant.name.label("restaurant_name")
         )
-        .outerjoin(Restaurant, MenuItem.restaurant_id == Restaurant.id)
-        .where(MenuItem.is_available == True)
+        .join(Restaurant, MenuItem.restaurant_id == Restaurant.id)
+        .outerjoin(PlatformCategory, MenuItem.platform_category_id == PlatformCategory.id)
+        .where(MenuItem.is_available == True, _customer_restaurant_clause())
     )
     
     if restaurant_id:
@@ -198,7 +227,10 @@ async def get_menu_items(
             "is_available": row.is_available,
             "restaurant_id": row.restaurant_id,
             "restaurant_name": row.restaurant_name,
-            "delivery_time": row.delivery_time
+            "delivery_time": row.delivery_time,
+            "category": row.category,
+            "vendor_category": row.vendor_category,
+            "platform_category_id": row.platform_category_id,
         })
     
     return items
@@ -209,7 +241,7 @@ async def get_menu_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db)
 ):
-    """Get a specific menu item by ID"""
+    """Get a specific restaurant product by ID"""
     result = await db.execute(
         select(
             MenuItem.id,
@@ -220,10 +252,14 @@ async def get_menu_item(
             MenuItem.is_available,
             MenuItem.restaurant_id,
             MenuItem.delivery_time,
+            MenuItem.vendor_category,
+            MenuItem.platform_category_id,
+            PlatformCategory.slug.label("category"),
             Restaurant.name.label("restaurant_name")
         )
-        .outerjoin(Restaurant, MenuItem.restaurant_id == Restaurant.id)
-        .where(MenuItem.id == item_id)
+        .join(Restaurant, MenuItem.restaurant_id == Restaurant.id)
+        .outerjoin(PlatformCategory, MenuItem.platform_category_id == PlatformCategory.id)
+        .where(MenuItem.id == item_id, _customer_restaurant_clause())
     )
     row = result.one_or_none()
     
@@ -239,8 +275,28 @@ async def get_menu_item(
         "is_available": row.is_available,
         "restaurant_id": row.restaurant_id,
         "restaurant_name": row.restaurant_name,
-        "delivery_time": row.delivery_time
+        "delivery_time": row.delivery_time,
+        "category": row.category,
+        "vendor_category": row.vendor_category,
+        "platform_category_id": row.platform_category_id,
     }
+
+
+@router.get("/platform-categories", response_model=List[PlatformCategoryResponse])
+async def list_platform_categories(
+    business_type: str = "Restaurant",
+    db: AsyncSession = Depends(get_db),
+):
+    """Official browse categories for a vendor business type."""
+    bt = business_type.strip() or "Restaurant"
+    result = await db.execute(
+        select(PlatformCategory)
+        .where(PlatformCategory.business_type == bt)
+        .order_by(PlatformCategory.sort_order, PlatformCategory.name)
+    )
+    # Customer browse: at most Food/Drinks/Desserts/Sides (+ Other for vendors);
+    # never expose a Bakery tab.
+    return [c for c in result.scalars().all() if c.slug != "bakery"]
 
 
 @router.get("/restaurants/{restaurant_id}/items", response_model=List[MenuItemCategoryResponse])
@@ -249,19 +305,30 @@ async def get_restaurant_items_by_category(
     category: str = "food",
     db: AsyncSession = Depends(get_db),
 ):
-    cat = category.lower()
-    if cat not in ("food", "drinks"):
-        raise HTTPException(status_code=400, detail="category must be food or drinks")
+    """
+    Catalog items for a restaurant filtered by platform category slug
+    (e.g. food, drinks). Non-restaurant vendors are not exposed yet.
+    """
+    cat = category.strip().lower()
+    if not cat:
+        raise HTTPException(status_code=400, detail="category is required")
+
+    store = await db.execute(select(Restaurant).where(Restaurant.id == restaurant_id))
+    restaurant = store.scalar_one_or_none()
+    if not restaurant or not _is_customer_restaurant(getattr(restaurant, "business_type", None)):
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
     result = await db.execute(
-        select(MenuItem)
+        select(MenuItem, PlatformCategory.slug)
+        .outerjoin(PlatformCategory, MenuItem.platform_category_id == PlatformCategory.id)
         .where(
             MenuItem.restaurant_id == restaurant_id,
             MenuItem.is_available == True,
-            MenuItem.category == cat,
+            PlatformCategory.slug == cat,
         )
         .order_by(MenuItem.name)
     )
-    items = result.scalars().all()
+    rows = result.all()
     return [
         MenuItemCategoryResponse(
             id=str(i.id),
@@ -270,8 +337,11 @@ async def get_restaurant_items_by_category(
             image=i.image_url,
             delivery_minutes=i.delivery_time,
             description=i.description,
+            category=slug,
+            vendor_category=i.vendor_category,
+            platform_category_id=str(i.platform_category_id) if i.platform_category_id else None,
         )
-        for i in items
+        for i, slug in rows
     ]
 
 
@@ -306,7 +376,7 @@ async def get_menu_item_modifiers(
         text(
             """
             SELECT id, name FROM menu_modifier_groups
-            WHERE menu_item_id = :item_id
+            WHERE product_id = :item_id
             ORDER BY sort_order
             """
         ),

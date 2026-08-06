@@ -115,7 +115,7 @@ async def create_order_from_cart(
         db.add(
             OrderItem(
                 order_id=order.id,
-                menu_item_id=row.menu_item_id,
+                product_id=row.product_id,
                 quantity=row.quantity,
                 price_at_order=row.unit_price,
                 unit_price=row.unit_price,

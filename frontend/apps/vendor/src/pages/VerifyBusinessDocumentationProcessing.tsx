@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RegistrationTransitionLoader from '@/components/RegistrationTransitionLoader';
 import { vendorApi } from '@/lib/api';
+import { setCachedBusinessType } from '@/lib/businessDocumentation';
 import { clearDocumentationSkipped } from '@/lib/menuSetup';
 
 const MIN_DISPLAY_MS = 2200;
@@ -34,6 +35,7 @@ export default function VerifyBusinessDocumentationProcessing() {
         if (cancelled) {
           return;
         }
+        setCachedBusinessType(result.data!.business_type);
         navigate('/verify-business/documentation', {
           replace: true,
           state: { businessType: result.data!.business_type },
@@ -53,7 +55,7 @@ export default function VerifyBusinessDocumentationProcessing() {
       eyebrow="Going back to"
       destination="Documentation"
       error={error}
-      onErrorAction={() => navigate('/verify-business/menu', { replace: true })}
+      onErrorAction={() => navigate('/verify-business/catalog', { replace: true })}
       errorActionLabel="Back to menu"
     />
   );

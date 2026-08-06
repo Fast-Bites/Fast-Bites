@@ -10,10 +10,11 @@ import RegistrationPageShell from '@/components/RegistrationPageShell';
 import {
   DOCUMENTATION_PAGE_SUBTITLE,
   normalizeBusinessType,
+  setCachedBusinessType,
   type BusinessTypeKey,
 } from '@/lib/businessDocumentation';
 import { vendorApi, vendorAuth } from '@/lib/api';
-import { isDocumentationSkipped, isMenuSetupDone, markDocumentationSkipped } from '@/lib/menuSetup';
+import { markDocumentationSkipped } from '@/lib/menuSetup';
 import { resolveVendorPortalPath } from '@/lib/verification';
 
 interface DocumentationLocationState {
@@ -58,14 +59,14 @@ export default function VerifyBusinessDocumentation() {
         return;
       }
 
-      if (path === '/verify-business/menu') {
-        navigate('/verify-business/menu', { replace: true });
+      if (path === '/verify-business/catalog') {
+        navigate('/verify-business/catalog', { replace: true });
         return;
       }
 
       // Arriving from the “Going back to Documentation” transition — UI is ready.
       if (locationState?.businessType) {
-        setBusinessType(normalizeBusinessType(locationState.businessType));
+        setBusinessType(setCachedBusinessType(locationState.businessType));
         setLoading(false);
         return;
       }
@@ -81,14 +82,14 @@ export default function VerifyBusinessDocumentation() {
         return;
       }
 
-      setBusinessType(normalizeBusinessType(result.data.business_type));
+      setBusinessType(setCachedBusinessType(result.data.business_type));
 
-      // Docs submitted or skipped, menu still outstanding → continue to menu.
+      // Docs submitted or skipped, catalog still outstanding → continue setup.
       if (
-        (result.data.documents_submitted || isDocumentationSkipped()) &&
-        !isMenuSetupDone()
+        (result.data.documents_submitted || result.data.documentation_skipped) &&
+        !result.data.catalog_setup_completed
       ) {
-        navigate('/verify-business/menu', { replace: true });
+        navigate('/verify-business/catalog', { replace: true });
         return;
       }
 
@@ -102,11 +103,23 @@ export default function VerifyBusinessDocumentation() {
     };
   }, [locationState?.businessType, navigate]);
 
-  const goToMenuSetup = (skipped = false) => {
+  const goToMenuSetup = async (skipped = false) => {
     if (skipped) {
       markDocumentationSkipped();
+      setLoadError(null);
+      setLoading(true);
+      const result = await vendorApi.skipDocumentation();
+      if (result.error) {
+        setLoading(false);
+        setLoadError(
+          typeof result.error === 'string'
+            ? result.error
+            : 'Could not save documentation skip. Try again.',
+        );
+        return;
+      }
     }
-    navigate('/verify-business/menu-processing', { replace: true });
+    navigate('/verify-business/catalog-processing', { replace: true });
   };
 
   if (loading) {
@@ -126,7 +139,7 @@ export default function VerifyBusinessDocumentation() {
   return (
     <RegistrationPageShell>
       <div className="mb-4 flex justify-end">
-        <RegistrationSkipButton onClick={() => goToMenuSetup(true)} />
+        <RegistrationSkipButton onClick={() => void goToMenuSetup(true)} />
       </div>
 
       <RegistrationPageTitle
@@ -138,7 +151,7 @@ export default function VerifyBusinessDocumentation() {
       <section className="flex min-h-0 flex-1 flex-col">
         <BusinessDocumentationForm
           businessType={businessType}
-          onSubmitSuccess={() => goToMenuSetup(false)}
+          onSubmitSuccess={() => void goToMenuSetup(false)}
         />
       </section>
     </RegistrationPageShell>

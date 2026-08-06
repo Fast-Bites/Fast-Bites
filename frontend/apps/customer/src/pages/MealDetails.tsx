@@ -31,20 +31,20 @@ interface MealData {
 }
 
 interface Serving {
-  sauceId: string;
-  sauceLabel: string;
+  proteinId: string;
+  proteinLabel: string;
   extrasId: string;
   extrasLabel: string;
-  sauceOpen: boolean;
+  proteinOpen: boolean;
   extrasOpen: boolean;
 }
 
 const emptyServing = (): Serving => ({
-  sauceId: '',
-  sauceLabel: '',
+  proteinId: '',
+  proteinLabel: '',
   extrasId: '',
   extrasLabel: '',
-  sauceOpen: false,
+  proteinOpen: false,
   extrasOpen: false,
 });
 
@@ -78,7 +78,7 @@ const MealDetails: React.FC = () => {
   const [cartError, setCartError] = useState<string | null>(null);
   const [orderBusy, setOrderBusy] = useState(false);
 
-  const [sauceOptions, setSauceOptions] = useState<ModifierOption[]>([]);
+  const [proteinOptions, setProteinOptions] = useState<ModifierOption[]>([]);
   const [extrasOptions, setExtrasOptions] = useState<ModifierOption[]>([]);
   const [sizeOptions, setSizeOptions] = useState<ModifierOption[]>([]);
   const [modifiersNote, setModifiersNote] = useState<string | null>(null);
@@ -91,13 +91,13 @@ const MealDetails: React.FC = () => {
     if (!mealItemId) return;
     setModifiersLoading(true);
     fetchMealModifiers(mealItemId).then(
-      ({ sauceOptions: sauces, extrasOptions: extras, sizeOptions: sizes, modifiersNote: note }) => {
+      ({ proteinOptions: proteins, extrasOptions: extras, sizeOptions: sizes, modifiersNote: note }) => {
         if (fromRestaurantContext) {
-          setSauceOptions(sauces);
+          setProteinOptions(proteins);
           setExtrasOptions(extras);
           setModifiersNote(note);
         } else {
-          setSauceOptions([]);
+          setProteinOptions([]);
           setExtrasOptions([]);
           setModifiersNote(null);
           setSizeOptions(sizes);
@@ -136,7 +136,7 @@ const MealDetails: React.FC = () => {
 
   const collapseSheet = useCallback(() => {
     setSheetExpanded(false);
-    setServings((prev) => prev.map((s) => ({ ...s, sauceOpen: false, extrasOpen: false })));
+    setServings((prev) => prev.map((s) => ({ ...s, proteinOpen: false, extrasOpen: false })));
   }, []);
 
   const expandSheet = useCallback(() => setSheetExpanded(true), []);
@@ -149,11 +149,11 @@ const MealDetails: React.FC = () => {
     else if (diff < -50) collapseSheet();
   }, [expandSheet, collapseSheet]);
 
-  const saucePriceById = useMemo(() => {
+  const proteinPriceById = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const o of sauceOptions) m[o.id] = o.price;
+    for (const o of proteinOptions) m[o.id] = o.price;
     return m;
-  }, [sauceOptions]);
+  }, [proteinOptions]);
 
   const extrasPriceById = useMemo(() => {
     const m: Record<string, number> = {};
@@ -176,7 +176,7 @@ const MealDetails: React.FC = () => {
   const selectedSizeOption = sizeOptions.find((o) => o.id === selectedSizeId);
   const sizePriceDelta = selectedSizeId ? sizePriceById[selectedSizeId] ?? 0 : 0;
 
-  const sauceRequired = sauceOptions.length > 0;
+  const proteinRequired = proteinOptions.length > 0;
 
   const preserveSheetScroll = (update: () => void) => {
     const el = sheetScrollRef.current;
@@ -192,19 +192,19 @@ const MealDetails: React.FC = () => {
 
   const applyModifierChoice = (
     idx: number,
-    field: 'sauce' | 'extras',
+    field: 'protein' | 'extras',
     choice: ModifierOption | null,
   ) => {
     preserveSheetScroll(() => {
       setServings((prev) =>
         prev.map((s, i) => {
           if (i !== idx) return s;
-          if (field === 'sauce') {
+          if (field === 'protein') {
             return {
               ...s,
-              sauceId: choice?.id ?? '',
-              sauceLabel: choice?.label ?? '',
-              sauceOpen: false,
+              proteinId: choice?.id ?? '',
+              proteinLabel: choice?.label ?? '',
+              proteinOpen: false,
             };
           }
           return {
@@ -225,17 +225,17 @@ const MealDetails: React.FC = () => {
     });
   };
 
-  const closeAllDropdowns = (exceptIdx?: number, exceptField?: 'sauce' | 'extras') => {
+  const closeAllDropdowns = (exceptIdx?: number, exceptField?: 'protein' | 'extras') => {
     setServings((prev) =>
       prev.map((s, i) => {
         if (i === exceptIdx) {
           return {
             ...s,
-            sauceOpen: exceptField === 'sauce' ? s.sauceOpen : false,
+            proteinOpen: exceptField === 'protein' ? s.proteinOpen : false,
             extrasOpen: exceptField === 'extras' ? s.extrasOpen : false,
           };
         }
-        return { ...s, sauceOpen: false, extrasOpen: false };
+        return { ...s, proteinOpen: false, extrasOpen: false };
       })
     );
   };
@@ -264,7 +264,7 @@ const MealDetails: React.FC = () => {
   // Calculate total across all servings
   const servingsCost = fromRestaurantContext
     ? servings.reduce((sum, s) => {
-        const sc = s.sauceId ? saucePriceById[s.sauceId] ?? 0 : 0;
+        const sc = s.proteinId ? proteinPriceById[s.proteinId] ?? 0 : 0;
         const ec = s.extrasId ? extrasPriceById[s.extrasId] ?? 0 : 0;
         return sum + sc + ec;
       }, 0)
@@ -281,14 +281,15 @@ const MealDetails: React.FC = () => {
   }> => {
     if (fromRestaurantContext) {
       if (!restaurantId) return { ok: false, error: 'Restaurant not found.' };
-      if (sauceRequired && servings.some((s) => !s.sauceId)) {
-        return { ok: false, error: 'Please choose a sauce for each serving.' };
+      if (proteinRequired && servings.some((s) => !s.proteinId)) {
+        return { ok: false, error: 'Please choose a protein for each serving.' };
       }
       const lineUnitPrice =
         quantity > 0 ? (basePrice * quantity + servingsCost) / quantity : basePrice;
       const result = await addCartItem({
         restaurant_id: restaurantId,
         menu_item_id: meal.id,
+        product_id: meal.id,
         name: cartItemNameForServings(meal.name, servings.length),
         unit_price: lineUnitPrice,
         quantity,
@@ -296,7 +297,7 @@ const MealDetails: React.FC = () => {
         section: 'main',
         options_json: buildOptionsJson(
           servings,
-          saucePriceById,
+          proteinPriceById,
           extrasPriceById,
           basePrice,
           meal.name,
@@ -319,6 +320,7 @@ const MealDetails: React.FC = () => {
     const result = await addCartItem({
       restaurant_id: homeRestaurantId,
       menu_item_id: meal.id,
+      product_id: meal.id,
       name: meal.name,
       unit_price: homeUnitPrice,
       quantity,
@@ -371,7 +373,7 @@ const MealDetails: React.FC = () => {
   const modifierOptionPick = (
     e: React.PointerEvent,
     idx: number,
-    field: 'sauce' | 'extras',
+    field: 'protein' | 'extras',
     choice: ModifierOption | null,
   ) => {
     e.preventDefault();
@@ -379,13 +381,13 @@ const MealDetails: React.FC = () => {
     applyModifierChoice(idx, field, choice);
   };
 
-  // Render a single serving's sauce + extras dropdowns
+  // Render a single serving's protein + extras dropdowns
   const renderServing = (serving: Serving, idx: number) => {
-    const saucePrice = serving.sauceId ? saucePriceById[serving.sauceId] ?? 0 : 0;
+    const proteinPrice = serving.proteinId ? proteinPriceById[serving.proteinId] ?? 0 : 0;
     const extrasPrice = serving.extrasId ? extrasPriceById[serving.extrasId] ?? 0 : 0;
     const isExtra = idx > 0;
     /** Additional servings sit low in the sheet — open lists upward so options aren't clipped. */
-    const sauceDropdownPosition = isExtra ? 'bottom-full mb-1' : 'top-full mt-1';
+    const proteinDropdownPosition = isExtra ? 'bottom-full mb-1' : 'top-full mt-1';
     const extrasDropdownPosition = 'bottom-full mb-1';
 
     return (
@@ -404,59 +406,59 @@ const MealDetails: React.FC = () => {
           </div>
         )}
 
-        {/* Sauce dropdown */}
-        {sauceOptions.length > 0 && (
+        {/* Protein dropdown */}
+        {proteinOptions.length > 0 && (
         <div className="mb-2">
           <h3 className="text-foreground text-lg font-light mb-2">
-            Choose a sauce{sauceRequired ? ' (required)' : ''}:
+            Choose a protein{proteinRequired ? ' (required)' : ''}:
           </h3>
-          <div className={`relative ${serving.sauceOpen ? 'z-40' : 'z-0'}`}>
+          <div className={`relative ${serving.proteinOpen ? 'z-40' : 'z-0'}`}>
             <button
               type="button"
               tabIndex={sheetExpanded ? 0 : -1}
               onClick={() => {
                 if (!sheetExpanded) return;
-                closeAllDropdowns(idx, 'sauce');
-                updateServing(idx, { sauceOpen: !serving.sauceOpen, extrasOpen: false });
+                closeAllDropdowns(idx, 'protein');
+                updateServing(idx, { proteinOpen: !serving.proteinOpen, extrasOpen: false });
               }}
               className="relative z-10 flex w-full items-center justify-between rounded-lg border border-muted-foreground/40 bg-background p-3 text-sm"
             >
-              <span className={serving.sauceLabel ? 'text-foreground' : 'text-muted-foreground/50'}>
-                {serving.sauceLabel || 'Select a sauce'}
+              <span className={serving.proteinLabel ? 'text-foreground' : 'text-muted-foreground/50'}>
+                {serving.proteinLabel || 'Select a protein'}
               </span>
               <img
                 src="/assets/down-arrow.svg"
                 alt=""
-                className={`h-4 w-4 transition-transform ${serving.sauceOpen ? 'rotate-180' : ''}`}
+                className={`h-4 w-4 transition-transform ${serving.proteinOpen ? 'rotate-180' : ''}`}
               />
             </button>
-            {serving.sauceOpen && sheetExpanded && (
+            {serving.proteinOpen && sheetExpanded && (
               <div
-                className={`${MODIFIER_DROPDOWN_PANEL} ${sauceDropdownPosition}`}
+                className={`${MODIFIER_DROPDOWN_PANEL} ${proteinDropdownPosition}`}
                 role="listbox"
               >
                 <button
                   type="button"
                   role="option"
                   tabIndex={-1}
-                  onPointerDown={(e) => modifierOptionPick(e, idx, 'sauce', null)}
+                  onPointerDown={(e) => modifierOptionPick(e, idx, 'protein', null)}
                   className="w-full shrink-0 bg-transparent text-left text-sm text-muted-foreground transition-opacity hover:opacity-80"
                 >
                   None
                 </button>
-                {sauceOptions.map((opt) => (
+                {proteinOptions.map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     role="option"
                     tabIndex={-1}
-                    aria-selected={serving.sauceId === opt.id}
+                    aria-selected={serving.proteinId === opt.id}
                     onPointerDown={(e) =>
                       modifierOptionPick(
                         e,
                         idx,
-                        'sauce',
-                        serving.sauceId === opt.id ? null : opt,
+                        'protein',
+                        serving.proteinId === opt.id ? null : opt,
                       )
                     }
                     className="w-full shrink-0 bg-transparent text-left text-sm text-foreground transition-opacity hover:opacity-80"
@@ -467,8 +469,8 @@ const MealDetails: React.FC = () => {
               </div>
             )}
           </div>
-          <p className={`mt-1 text-right text-xs ${serving.sauceLabel ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
-            {serving.sauceLabel ? `Cost: ₦${saucePrice.toLocaleString()}` : 'Cost: ₦0'}
+          <p className={`mt-1 text-right text-xs ${serving.proteinLabel ? 'font-medium text-popup-green' : 'text-muted-foreground'}`}>
+            {serving.proteinLabel ? `Cost: ₦${proteinPrice.toLocaleString()}` : 'Cost: ₦0'}
           </p>
         </div>
         )}
@@ -484,7 +486,7 @@ const MealDetails: React.FC = () => {
               onClick={() => {
                 if (!sheetExpanded) return;
                 closeAllDropdowns(idx, 'extras');
-                updateServing(idx, { extrasOpen: !serving.extrasOpen, sauceOpen: false });
+                updateServing(idx, { extrasOpen: !serving.extrasOpen, proteinOpen: false });
               }}
               className="relative z-10 flex w-full items-center justify-between rounded-lg border border-muted-foreground/40 bg-background p-3 text-sm"
             >

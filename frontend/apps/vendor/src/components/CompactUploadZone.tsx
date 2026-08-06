@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, ScanLine } from 'lucide-react';
 import { menuSetupUploadMinHeightClassName } from '@/components/MenuSetupOptionList';
 import { menuFileTypeTheme } from '@/lib/menuSetup';
 
@@ -9,6 +9,8 @@ interface CompactUploadZoneProps {
   accept?: string;
   /** Prefer device camera when set (e.g. "environment" for rear camera). */
   capture?: 'environment' | 'user';
+  /** Upload (+) vs scan (scan frame) empty-state icon. */
+  variant?: 'upload' | 'scan';
   emptyLabel?: string;
   uploading?: boolean;
   /** Object URL or remote URL — used for image previews only. */
@@ -29,6 +31,7 @@ interface CompactUploadZoneProps {
 export default function CompactUploadZone({
   accept = 'image/*,application/pdf',
   capture,
+  variant = 'upload',
   emptyLabel = 'Click to upload',
   uploading,
   previewUrl,
@@ -50,7 +53,7 @@ export default function CompactUploadZone({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className={`relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl bg-white px-5 py-12 transition hover:bg-white disabled:cursor-wait disabled:opacity-80 ${menuSetupUploadMinHeightClassName}`}
+          className={`relative flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl bg-white px-5 py-12 transition hover:bg-white disabled:cursor-wait disabled:opacity-80 max-[500px]:gap-2 max-[500px]:px-3 max-[500px]:py-6 ${menuSetupUploadMinHeightClassName}`}
         >
           {hasImagePreview ? (
             <img
@@ -59,9 +62,11 @@ export default function CompactUploadZone({
               className="absolute inset-0 z-0 h-full w-full object-cover"
             />
           ) : hasFileMeta ? (
-            <span className={`absolute inset-0 z-0 flex items-center justify-center p-4 ${theme.backdrop}`}>
+            <span
+              className={`absolute inset-0 z-0 flex items-center justify-center p-4 max-[500px]:p-2 ${theme.backdrop}`}
+            >
               <span
-                className={`relative flex h-full max-h-40 w-full max-w-[7.5rem] flex-col overflow-hidden rounded-lg border shadow-sm ${theme.shell}`}
+                className={`relative flex h-full max-h-40 w-full max-w-[7.5rem] flex-col overflow-hidden rounded-lg border shadow-sm max-[500px]:max-h-28 max-[500px]:max-w-[5.5rem] ${theme.shell}`}
               >
                 <span
                   className={`flex shrink-0 items-center justify-center gap-1.5 border-b px-2 py-1.5 ${theme.header}`}
@@ -90,10 +95,20 @@ export default function CompactUploadZone({
             </span>
           ) : (
             <>
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/25 text-primary">
-                <Plus size={46} strokeWidth={1.0} />
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/25 text-primary max-[500px]:h-10 max-[500px]:w-10">
+                {variant === 'scan' ? (
+                  <ScanLine
+                    strokeWidth={1.75}
+                    className="h-8 w-8 max-[500px]:h-5 max-[500px]:w-5"
+                  />
+                ) : (
+                  <Plus
+                    strokeWidth={1.0}
+                    className="h-[46px] w-[46px] max-[500px]:h-7 max-[500px]:w-7"
+                  />
+                )}
               </span>
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-gray-400 max-[500px]:text-xs">
                 {uploading ? 'Uploading…' : emptyLabel}
               </span>
             </>
@@ -122,7 +137,9 @@ export default function CompactUploadZone({
         </svg>
       </div>
       {acceptHint ? (
-        <p className="mt-1 text-[10px] leading-tight text-gray-400">{acceptHint}</p>
+        <p className="mt-1 text-[10px] leading-tight text-gray-400 max-[500px]:text-[9px]">
+          {acceptHint}
+        </p>
       ) : null}
       {error ? <p className="mt-0.5 text-sm text-red-600">{error}</p> : null}
       <input

@@ -1,6 +1,5 @@
 import type { BusinessRegistrationSummary, VendorProfile } from './api';
 import { vendorApi } from './api';
-import { isDocumentationSkipped, isMenuSetupDone } from './menuSetup';
 
 export type VendorVerificationStage =
   | 'registration'
@@ -12,18 +11,23 @@ export type VendorPortalPath =
   | '/dashboard'
   | '/verify-business'
   | '/verify-business/documentation'
-  | '/verify-business/menu';
+  | '/verify-business/catalog';
 
 export function isBusinessVerified(profile: VendorProfile | null | undefined): boolean {
   return profile?.business_verified === true || profile?.verification_stage === 'verified';
 }
 
-function pathAfterDocumentation(): VendorPortalPath {
-  return isMenuSetupDone() ? '/dashboard' : '/verify-business/menu';
+function pathAfterDocumentation(registration?: BusinessRegistrationSummary | null): VendorPortalPath {
+  if (registration?.catalog_setup_completed) {
+    return '/dashboard';
+  }
+  return '/verify-business/catalog';
 }
 
 function documentationStepComplete(registration?: BusinessRegistrationSummary | null): boolean {
-  return Boolean(registration?.documents_submitted) || isDocumentationSkipped();
+  return Boolean(
+    registration?.documents_submitted || registration?.documentation_skipped,
+  );
 }
 
 export function vendorVerificationPath(
@@ -31,24 +35,24 @@ export function vendorVerificationPath(
   registration?: BusinessRegistrationSummary | null,
 ): VendorPortalPath {
   if (isBusinessVerified(profile)) {
-    return pathAfterDocumentation();
+    return pathAfterDocumentation(registration);
   }
 
   const stage = profile?.verification_stage ?? registration?.verification_stage;
 
   if (stage === 'pending_review') {
-    return pathAfterDocumentation();
+    return pathAfterDocumentation(registration);
   }
 
   if (stage === 'documentation') {
     if (documentationStepComplete(registration)) {
-      return pathAfterDocumentation();
+      return pathAfterDocumentation(registration);
     }
     return '/verify-business/documentation';
   }
 
   if (!stage && documentationStepComplete(registration)) {
-    return pathAfterDocumentation();
+    return pathAfterDocumentation(registration);
   }
 
   if (!stage && registration?.business_type) {
@@ -64,15 +68,10 @@ export async function resolveVendorPortalPath(
   const stage = profile?.verification_stage;
 
   // Always load registration details once business info exists so we know
-  // whether docs were submitted/skipped before choosing documentation vs menu.
+  // whether docs were submitted/skipped and catalog setup is done.
   if (stage && stage !== 'registration') {
     const registration = await vendorApi.getBusinessRegistration();
     return vendorVerificationPath(profile, registration.data ?? null);
-  }
-
-  const directPath = vendorVerificationPath(profile);
-  if (directPath !== '/verify-business') {
-    return directPath;
   }
 
   const registration = await vendorApi.getBusinessRegistration();
@@ -80,7 +79,7 @@ export async function resolveVendorPortalPath(
     return vendorVerificationPath(profile, registration.data);
   }
 
-  return '/verify-business';
+  return vendorVerificationPath(profile);
 }
 
 /** @deprecated Use vendorVerificationPath(profile) */

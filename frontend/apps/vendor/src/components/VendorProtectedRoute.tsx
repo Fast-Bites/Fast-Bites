@@ -91,7 +91,7 @@ export function VendorVerifiedRoute({ children }: VendorVerifiedRouteProps) {
           setStatus('unverified');
           return;
         }
-        if (path === '/verify-business/menu') {
+        if (path === '/verify-business/catalog') {
           setRedirectPath(path);
           setStatus('unverified');
           return;

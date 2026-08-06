@@ -28,6 +28,8 @@ export interface BusinessRegistrationSummary {
   business_verified: boolean;
   verification_stage: 'registration' | 'documentation' | 'pending_review' | 'verified';
   documents_submitted: boolean;
+  documentation_skipped?: boolean;
+  catalog_setup_completed?: boolean;
 }
 
 export interface VendorImageUploadResult {
@@ -187,6 +189,119 @@ export const vendorApi = {
       method: 'POST',
       authToken: token,
       body: JSON.stringify({ documents }),
+    });
+  },
+
+  getPlatformCategories: async (businessType: string) => {
+    const type = encodeURIComponent(businessType.trim() || 'Restaurant');
+    return apiRequest<
+      Array<{
+        id: string;
+        business_type: string;
+        slug: string;
+        name: string;
+        sort_order: number;
+      }>
+    >(`/menu/platform-categories?business_type=${type}`);
+  },
+
+  extractCatalogItems: async (file: File) => {
+    const token = await getAuthToken();
+    if (!token) {
+      return { error: 'Not authenticated' };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${getApiUrl()}/vendors/catalog-extract`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { error: (error as { detail?: string }).detail || 'Extraction failed' };
+      }
+
+      const data = (await response.json()) as {
+        items: Array<{
+          name: string;
+          price: number;
+          vendor_category?: string | null;
+          portion_size?: string | null;
+          delivery_time?: number | null;
+          modifiers?: Array<{
+            group: string;
+            options: Array<{ label: string; price_delta: number }>;
+          }>;
+        }>;
+        provider: string;
+        item_count?: number;
+        modifiers_count?: number;
+        message?: string;
+      };
+      return { data };
+    } catch {
+      return { error: 'Network error' };
+    }
+  },
+
+  createCatalogItems: async (
+    items: Array<{
+      name: string;
+      price: number;
+      vendor_category?: string | null;
+      delivery_time?: number | null;
+      description?: string | null;
+      image_url?: string | null;
+      portion_size?: string | null;
+      modifiers?: Array<{
+        group: string;
+        options: Array<{ label: string; price_delta: number }>;
+      }>;
+    }>,
+  ) => {
+    const token = await getAuthToken();
+    if (!token) {
+      return { error: 'Not authenticated' };
+    }
+
+    return apiRequest<{
+      created_count: number;
+      skipped_count?: number;
+      item_ids: string[];
+      message?: string;
+    }>('/vendors/catalog-items', {
+      method: 'POST',
+      authToken: token,
+      body: JSON.stringify({ items }),
+    });
+  },
+
+  skipDocumentation: async () => {
+    const token = await getAuthToken();
+    if (!token) {
+      return { error: 'Not authenticated' };
+    }
+    return apiRequest<BusinessRegistrationSummary>('/vendors/onboarding/skip-documentation', {
+      method: 'POST',
+      authToken: token,
+    });
+  },
+
+  completeCatalogSetup: async () => {
+    const token = await getAuthToken();
+    if (!token) {
+      return { error: 'Not authenticated' };
+    }
+    return apiRequest<BusinessRegistrationSummary>('/vendors/onboarding/complete-catalog', {
+      method: 'POST',
+      authToken: token,
     });
   },
 };

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -14,9 +14,19 @@ from schemas.vendor_business import (
     BusinessRegistrationRequest,
     BusinessRegistrationResponse,
     BusinessRegistrationSummary,
+    CatalogExtractResponse,
+    CatalogExtractedItem,
+    CatalogItemCreate,
+    CatalogItemsCreateRequest,
+    CatalogItemsCreateResponse,
     VendorImageUploadResponse,
     VerificationDocumentsRequest,
 )
+from models.product import Product
+from models.platform_category import PlatformCategory
+from config import settings
+from services.catalog_extract import extract_catalog_items_from_upload
+from services.category_mapping import resolve_platform_category_id
 from services.cloudinary_storage import upload_vendor_image
 from services.jwt_auth import get_current_user
 from services.role_constants import VENDOR_ROLE
@@ -111,6 +121,68 @@ async def get_business_registration(
         business_verified=business.business_verified,
         verification_stage=verification_stage_for_business(business),
         documents_submitted=bool(business.verification_documents),
+        documentation_skipped=bool(business.documentation_skipped_at),
+        catalog_setup_completed=bool(business.catalog_setup_completed_at),
+    )
+
+
+async def skip_documentation(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Record that the vendor skipped documentation for now (survives re-login)."""
+    user_id = UUID(current_user["id"])
+    business = await _get_vendor_business(db, user_id)
+    already = bool(business.documentation_skipped_at)
+    if not business.documentation_skipped_at:
+        business.documentation_skipped_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(business)
+    log.info(
+        "Documentation skip for business %s (user %s) — %s",
+        business.id,
+        user_id,
+        "already recorded" if already else "saved",
+    )
+    return BusinessRegistrationSummary(
+        business_id=business.id,
+        business_name=business.name,
+        business_type=business.business_type or "",
+        business_verified=business.business_verified,
+        verification_stage=verification_stage_for_business(business),
+        documents_submitted=bool(business.verification_documents),
+        documentation_skipped=bool(business.documentation_skipped_at),
+        catalog_setup_completed=bool(business.catalog_setup_completed_at),
+    )
+
+
+async def complete_catalog_setup(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark catalog/menu onboarding done (skip or after save)."""
+    user_id = UUID(current_user["id"])
+    business = await _get_vendor_business(db, user_id)
+    already = bool(business.catalog_setup_completed_at)
+    if not business.catalog_setup_completed_at:
+        business.catalog_setup_completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(business)
+    log.info(
+        "Catalog setup complete for business %s (user %s) — %s",
+        business.id,
+        user_id,
+        "already recorded" if already else "saved",
+    )
+    return BusinessRegistrationSummary(
+        business_id=business.id,
+        business_name=business.name,
+        business_type=business.business_type or "",
+        business_verified=business.business_verified,
+        verification_stage=verification_stage_for_business(business),
+        documents_submitted=bool(business.verification_documents),
+        documentation_skipped=bool(business.documentation_skipped_at),
+        catalog_setup_completed=bool(business.catalog_setup_completed_at),
     )
 
 
@@ -223,6 +295,353 @@ async def submit_verification_documents(
         raise HTTPException(status_code=500, detail="Failed to save verification documents")
 
 
+def _norm_text(value: str | None) -> str:
+    return " ".join((value or "").strip().lower().split())
+
+
+_MODIFIER_GROUP_LABELS = {
+    "protein": "Protein",
+    "extras": "Extras",
+    "size": "Size",
+}
+
+
+def _normalize_create_modifiers(
+    item: CatalogItemCreate,
+) -> list[tuple[str, list[tuple[str, float]]]]:
+    """Return [(display_name, [(label, price_delta), ...]), ...] for Protein/Extras/Size.
+
+    Size is saved only when there are multiple size varieties (2+ options).
+    A single portion/pack selection is not persisted as a size modifier, and
+    nothing is written to product.description.
+    """
+    from services.catalog_extract import canonical_modifier_group
+
+    by_group: dict[str, list[tuple[str, float]]] = {}
+    for mod in item.modifiers or []:
+        canon = canonical_modifier_group(mod.group)
+        if not canon:
+            continue
+        bucket = by_group.setdefault(canon, [])
+        seen = {label.lower() for label, _ in bucket}
+        for opt in mod.options or []:
+            label = (opt.label or "").strip()
+            if not label or label.lower() in seen:
+                continue
+            bucket.append((label, float(opt.price_delta or 0)))
+            seen.add(label.lower())
+
+    # Single portion_size on the draft is display-only — not a size variety set.
+    size_opts = by_group.get("size") or []
+    if len(size_opts) < 2:
+        by_group.pop("size", None)
+
+    out: list[tuple[str, list[tuple[str, float]]]] = []
+    for key in ("protein", "extras", "size"):
+        opts = by_group.get(key)
+        if opts:
+            out.append((_MODIFIER_GROUP_LABELS[key], opts))
+    return out
+
+
+def _item_fingerprint(
+    *,
+    name: str,
+    price: float,
+    vendor_category: str | None,
+    delivery_time: int | None,
+    modifiers: list[tuple[str, list[tuple[str, float]]]],
+) -> tuple:
+    """Multi-field identity for same food at same restaurant (not name-only)."""
+    protein: list[str] = []
+    extras: list[str] = []
+    sizes: list[str] = []
+    for group_name, options in modifiers:
+        labels = sorted(_norm_text(label) for label, _ in options)
+        key = group_name.lower()
+        if key == "protein":
+            protein = labels
+        elif key == "extras":
+            extras = labels
+        elif key == "size":
+            sizes = labels
+    return (
+        _norm_text(name),
+        round(float(price), 2),
+        _norm_text(vendor_category),
+        delivery_time if delivery_time is not None else -1,
+        tuple(protein),
+        tuple(extras),
+        tuple(sizes),
+    )
+
+
+async def _existing_product_fingerprints(db: AsyncSession, restaurant_id: UUID) -> set[tuple]:
+    products = (
+        await db.execute(select(Product).where(Product.restaurant_id == restaurant_id))
+    ).scalars().all()
+    if not products:
+        return set()
+
+    groups_result = await db.execute(
+        text(
+            """
+            SELECT g.product_id, g.name, o.label
+            FROM menu_modifier_groups g
+            JOIN products p ON p.id = g.product_id
+            LEFT JOIN menu_modifier_options o ON o.group_id = g.id
+            WHERE p.restaurant_id = :restaurant_id
+            ORDER BY g.sort_order, o.sort_order
+            """
+        ),
+        {"restaurant_id": str(restaurant_id)},
+    )
+    mods_by_product: dict[str, dict[str, list[tuple[str, float]]]] = {}
+    for product_id, group_name, label in groups_result.all():
+        pid = str(product_id)
+        bucket = mods_by_product.setdefault(pid, {})
+        gname = (group_name or "").strip() or "Extras"
+        opts = bucket.setdefault(gname, [])
+        if label:
+            opts.append((str(label), 0.0))
+
+    fingerprints: set[tuple] = set()
+    for product in products:
+        mod_map = mods_by_product.get(str(product.id), {})
+        normalized: list[tuple[str, list[tuple[str, float]]]] = []
+        for name, opts in mod_map.items():
+            if not opts:
+                continue
+            if name.lower() == "size" and len(opts) < 2:
+                continue
+            normalized.append((name, opts))
+        fingerprints.add(
+            _item_fingerprint(
+                name=product.name,
+                price=float(product.price),
+                vendor_category=product.vendor_category,
+                delivery_time=product.delivery_time,
+                modifiers=normalized,
+            )
+        )
+    return fingerprints
+
+
+async def _save_modifier_groups(
+    db: AsyncSession,
+    product_id: UUID,
+    groups: list[tuple[str, list[tuple[str, float]]]],
+) -> None:
+    for sort_order, (group_name, options) in enumerate(groups):
+        group_result = await db.execute(
+            text(
+                """
+                INSERT INTO menu_modifier_groups (product_id, name, sort_order)
+                VALUES (:product_id, :name, :sort_order)
+                RETURNING id
+                """
+            ),
+            {
+                "product_id": str(product_id),
+                "name": group_name,
+                "sort_order": sort_order,
+            },
+        )
+        group_id = group_result.scalar_one()
+        for opt_order, (label, price_delta) in enumerate(options):
+            await db.execute(
+                text(
+                    """
+                    INSERT INTO menu_modifier_options (group_id, label, price_delta, sort_order)
+                    VALUES (:group_id, :label, :price_delta, :sort_order)
+                    """
+                ),
+                {
+                    "group_id": str(group_id),
+                    "label": label,
+                    "price_delta": price_delta,
+                    "sort_order": opt_order,
+                },
+            )
+
+
+async def create_catalog_items(
+    payload: CatalogItemsCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Persist catalog products from vendor Menu/Inventory setup."""
+    user_id = UUID(current_user["id"])
+    try:
+        business = await _get_vendor_business(db, user_id)
+        business_type = (business.business_type or "Restaurant").strip()
+
+        cat_result = await db.execute(
+            select(PlatformCategory).where(PlatformCategory.business_type == business_type)
+        )
+        categories = list(cat_result.scalars().all())
+        if not categories:
+            raise HTTPException(status_code=400, detail="No platform categories for this business type")
+
+        platforms_by_id = {row.id: row for row in categories}
+        known = await _existing_product_fingerprints(db, business.id)
+        batch_seen: set[tuple] = set()
+        log.info(
+            "Catalog create start for business %s (user %s): %s incoming, %s existing fingerprints",
+            business.id,
+            user_id,
+            len(payload.items),
+            len(known),
+        )
+
+        created_ids: list[UUID] = []
+        skipped_count = 0
+        for item in payload.items:
+            modifiers = _normalize_create_modifiers(item)
+            fingerprint = _item_fingerprint(
+                name=item.name,
+                price=float(item.price),
+                vendor_category=item.vendor_category,
+                delivery_time=item.delivery_time,
+                modifiers=modifiers,
+            )
+            if fingerprint in known or fingerprint in batch_seen:
+                skipped_count += 1
+                log.info(
+                    "Skipping duplicate catalog item %r for business %s",
+                    item.name.strip(),
+                    business.id,
+                )
+                continue
+            batch_seen.add(fingerprint)
+
+            if item.platform_category_id:
+                pc = platforms_by_id.get(item.platform_category_id)
+                if not pc:
+                    raise HTTPException(status_code=400, detail="Unknown platform category")
+                platform_category_id = pc.id
+            else:
+                platform_category_id = await resolve_platform_category_id(
+                    vendor_category=item.vendor_category,
+                    item_name=item.name,
+                    categories=categories,
+                )
+
+            row = Product(
+                restaurant_id=business.id,
+                name=item.name.strip(),
+                price=float(item.price),
+                vendor_category=(item.vendor_category or "").strip() or None,
+                platform_category_id=platform_category_id,
+                delivery_time=item.delivery_time,
+                description=None,
+                image_url=(item.image_url or "").strip() or None,
+                is_available=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(row)
+            await db.flush()
+            if modifiers:
+                await _save_modifier_groups(db, row.id, modifiers)
+                log.info(
+                    "Saved modifiers for product %s (%s): %s",
+                    row.id,
+                    row.name,
+                    ", ".join(f"{name}×{len(opts)}" for name, opts in modifiers),
+                )
+            known.add(fingerprint)
+            created_ids.append(row.id)
+
+        if not business.catalog_setup_completed_at:
+            business.catalog_setup_completed_at = datetime.now(timezone.utc)
+
+        await db.commit()
+        if created_ids and skipped_count:
+            message = f"Saved {len(created_ids)} item(s); skipped {skipped_count} duplicate(s)."
+        elif created_ids:
+            message = f"Saved {len(created_ids)} item(s)."
+        elif skipped_count:
+            message = f"No new items saved; skipped {skipped_count} duplicate(s)."
+        else:
+            message = "No items saved."
+        log.info(
+            "Catalog create done for business %s (user %s): created=%s skipped=%s",
+            business.id,
+            user_id,
+            len(created_ids),
+            skipped_count,
+        )
+        return CatalogItemsCreateResponse(
+            created_count=len(created_ids),
+            skipped_count=skipped_count,
+            item_ids=created_ids,
+            message=message,
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as exc:
+        await db.rollback()
+        log.error("Catalog item create failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to save catalog items")
+
+
+async def extract_catalog_items(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """OCR / parse a scanned or uploaded catalog file into draft products."""
+    user_id = UUID(current_user["id"])
+    business = await _get_vendor_business(db, user_id)
+    business_type = (business.business_type or "Restaurant").strip()
+    filename = file.filename or "upload"
+    log.info(
+        "Catalog extract start for business %s (user %s): file=%s type=%s",
+        business.id,
+        user_id,
+        filename,
+        business_type,
+    )
+
+    try:
+        items = await extract_catalog_items_from_upload(file, business_type=business_type)
+    except RuntimeError as exc:
+        log.warning("Catalog extract rejected for business %s: %s", business.id, exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        log.error("Catalog extract failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not extract items. Check LLM_PROVIDER and API keys.",
+        ) from exc
+
+    modifiers_count = sum(1 for row in items if row.get("modifiers"))
+    provider = (settings.LLM_PROVIDER or "groq").strip().lower()
+    if items:
+        message = (
+            f"Found {len(items)} item(s)"
+            + (f"; {modifiers_count} with modifiers." if modifiers_count else ".")
+        )
+    else:
+        message = "No products found in this file."
+    log.info(
+        "Catalog extract done for business %s: items=%s with_modifiers=%s provider=%s file=%s",
+        business.id,
+        len(items),
+        modifiers_count,
+        provider,
+        filename,
+    )
+    return CatalogExtractResponse(
+        items=[CatalogExtractedItem(**row) for row in items],
+        provider=provider,
+        item_count=len(items),
+        modifiers_count=modifiers_count,
+        message=message,
+    )
+
+
 vendor_router = APIRouter(prefix="/vendors", tags=["vendors"])
 legacy_vendor_router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -235,6 +654,30 @@ for route in vendor_router, legacy_vendor_router:
         submit_verification_documents,
         methods=["POST"],
         response_model=BusinessRegistrationResponse,
+    )
+    route.add_api_route(
+        "/onboarding/skip-documentation",
+        skip_documentation,
+        methods=["POST"],
+        response_model=BusinessRegistrationSummary,
+    )
+    route.add_api_route(
+        "/onboarding/complete-catalog",
+        complete_catalog_setup,
+        methods=["POST"],
+        response_model=BusinessRegistrationSummary,
+    )
+    route.add_api_route(
+        "/catalog-items",
+        create_catalog_items,
+        methods=["POST"],
+        response_model=CatalogItemsCreateResponse,
+    )
+    route.add_api_route(
+        "/catalog-extract",
+        extract_catalog_items,
+        methods=["POST"],
+        response_model=CatalogExtractResponse,
     )
 
 router = vendor_router

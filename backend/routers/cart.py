@@ -24,6 +24,7 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 
 
 def item_to_response(row: CartItem) -> CartItemResponse:
+    product_id = str(row.product_id) if row.product_id else None
     return CartItemResponse(
         id=str(row.id),
         name=row.name,
@@ -32,7 +33,8 @@ def item_to_response(row: CartItem) -> CartItemResponse:
         quantity=int(row.quantity),
         image=row.image_url,
         section=row.section,
-        menu_item_id=str(row.menu_item_id) if row.menu_item_id else None,
+        product_id=product_id,
+        menu_item_id=product_id,
         options_json=row.options_json or {},
     )
 
@@ -80,7 +82,7 @@ async def add_cart_item(
         item = CartItem(
             user_id=user_id,
             restaurant_id=UUID(body.restaurant_id),
-            menu_item_id=UUID(body.menu_item_id) if body.menu_item_id else None,
+            product_id=UUID(body.product_id) if body.product_id else None,
             name=body.name,
             description=body.description,
             unit_price=body.unit_price,
@@ -128,18 +130,19 @@ async def update_cart_quantity(
         raise HTTPException(status_code=500, detail="Failed to update cart")
 
 
-@router.delete("/menu-items/{menu_item_id}")
-async def remove_one_menu_item_from_cart(
-    menu_item_id: UUID,
+@router.delete("/products/{product_id}")
+@router.delete("/menu-items/{product_id}")
+async def remove_one_product_from_cart(
+    product_id: UUID,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove one unit from the most recently added cart line for this menu item."""
+    """Remove one unit from the most recently added cart line for this product."""
     try:
         user_id = UUID(current_user["id"])
         result = await db.execute(
             select(CartItem)
-            .where(CartItem.user_id == user_id, CartItem.menu_item_id == menu_item_id)
+            .where(CartItem.user_id == user_id, CartItem.product_id == product_id)
             .order_by(CartItem.updated_at.desc())
             .limit(1)
         )

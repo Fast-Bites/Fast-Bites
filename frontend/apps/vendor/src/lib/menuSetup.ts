@@ -15,6 +15,89 @@ export const MENU_SETUP_OPTIONS = [
 
 export type MenuSetupOptionId = (typeof MENU_SETUP_OPTIONS)[number]['id'];
 
+export interface CatalogModifierOption {
+  label: string;
+  price_delta: number;
+}
+
+export interface CatalogModifierGroup {
+  group: 'protein' | 'extras' | 'size' | string;
+  options: CatalogModifierOption[];
+}
+
+export interface MenuItemDraft {
+  id: string;
+  name: string;
+  price: string;
+  portionSize: string;
+  duration: string;
+  /** Free-text label the vendor uses (backend maps to platform category) */
+  vendorCategory: string;
+  /** Extracted meal customizations — passed through on save (restaurants) */
+  modifiers: CatalogModifierGroup[];
+}
+
+export function createEmptyMenuItem(id?: string): MenuItemDraft {
+  return {
+    id: id ?? `menu-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    price: '',
+    portionSize: '',
+    duration: '',
+    vendorCategory: '',
+    modifiers: [],
+  };
+}
+
+/** Parse HH:MM:SS (or MM:SS / minutes) into delivery_time minutes. */
+export function durationToMinutes(duration: string): number | null {
+  const trimmed = duration.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parts = trimmed.split(':').map((part) => Number(part));
+  if (parts.some((n) => Number.isNaN(n) || n < 0)) {
+    return null;
+  }
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return Math.round(hours * 60 + minutes + seconds / 60);
+  }
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return Math.round(minutes + seconds / 60);
+  }
+  if (parts.length === 1) {
+    return Math.round(parts[0]);
+  }
+  return null;
+}
+
+export function parsePriceInput(price: string): number | null {
+  const normalized = price.replace(/,/g, '').trim();
+  if (!normalized) {
+    return null;
+  }
+  const value = Number(normalized);
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return value;
+}
+
+/** Format minutes as HH:MM:SS for the duration field. */
+export function minutesToDuration(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) {
+    return '';
+  }
+  const total = Math.round(minutes);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+}
+
 export const PORTION_SIZE_OPTIONS = ['Small', 'Medium', 'Large', 'Regular'] as const;
 
 export const MENU_SCAN_ACCEPT = 'image/jpeg,image/png,image/webp';
@@ -162,24 +245,4 @@ export function markDocumentationSkipped(): void {
 
 export function clearDocumentationSkipped(): void {
   sessionStorage.removeItem(DOCUMENTATION_SKIPPED_KEY);
-}
-
-export interface MenuItemDraft {
-  id: string;
-  name: string;
-  price: string;
-  portionSize: string;
-  duration: string;
-  category: string;
-}
-
-export function createEmptyMenuItem(id?: string): MenuItemDraft {
-  return {
-    id: id ?? `menu-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    name: '',
-    price: '',
-    portionSize: '',
-    duration: '',
-    category: '',
-  };
 }

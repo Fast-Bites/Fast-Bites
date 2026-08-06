@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, type MouseEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import api, { type Restaurant, type RestaurantMenuItemDto } from '../lib/api';
+import api, {
+  type PlatformCategoryDto,
+  type Restaurant,
+  type RestaurantMenuItemDto,
+} from '../lib/api';
 import {
   fetchCartMenuItemIds,
   quickAddToCart,
@@ -34,16 +38,21 @@ function mapMenuDto(row: RestaurantMenuItemDto): MenuItem {
   };
 }
 
+const FALLBACK_TABS: PlatformCategoryDto[] = [
+  { id: 'food', business_type: 'Restaurant', slug: 'food', name: 'Food', sort_order: 1 },
+  { id: 'drinks', business_type: 'Restaurant', slug: 'drinks', name: 'Drinks', sort_order: 2 },
+];
+
 const RestaurantProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'food' | 'drinks'>('food');
+  const [tabs, setTabs] = useState<PlatformCategoryDto[]>(FALLBACK_TABS);
+  const [activeTab, setActiveTab] = useState('food');
   const [selectedMeals, setSelectedMeals] = useState<Set<string>>(new Set());
   const [showHoursOverlay, setShowHoursOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
-  const [foodItems, setFoodItems] = useState<MenuItem[]>([]);
-  const [drinkItems, setDrinkItems] = useState<MenuItem[]>([]);
+  const [itemsBySlug, setItemsBySlug] = useState<Record<string, MenuItem[]>>({});
   const [menuNote, setMenuNote] = useState<string | null>(null);
   const [liveRestaurant, setLiveRestaurant] = useState<Restaurant | null>(null);
   const cartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,27 +74,51 @@ const RestaurantProfile = () => {
 
   useEffect(() => {
     if (!restaurant?.id) return;
-    api.getRestaurant(String(restaurant.id)).then((res) => {
-      if (res.data) setLiveRestaurant(res.data as Restaurant);
-    });
-    const loadMenu = async () => {
-      const [foodRes, drinksRes] = await Promise.all([
-        api.getRestaurantMenuByCategory(String(restaurant.id), 'food'),
-        api.getRestaurantMenuByCategory(String(restaurant.id), 'drinks'),
-      ]);
-      if (foodRes.error && drinksRes.error) {
-        setFoodItems([]);
-        setDrinkItems([]);
-        setMenuNote('Menu unavailable — connect to the API.');
-        return;
+
+    const loadCatalog = async () => {
+      const restaurantRes = await api.getRestaurant(String(restaurant.id));
+      if (restaurantRes.data) setLiveRestaurant(restaurantRes.data as Restaurant);
+
+      const businessType =
+        restaurantRes.data?.business_type || restaurant.business_type || 'Restaurant';
+      const categoriesRes = await api.getPlatformCategories(businessType);
+      const nextTabs =
+        categoriesRes.data && categoriesRes.data.length > 0
+          ? categoriesRes.data.filter((c) => c.slug !== 'other' && c.slug !== 'bakery')
+          : FALLBACK_TABS;
+      setTabs(nextTabs);
+      const firstSlug = nextTabs[0]?.slug ?? 'food';
+      setActiveTab(firstSlug);
+
+      const results = await Promise.all(
+        nextTabs.map(async (tab) => {
+          const res = await api.getRestaurantMenuByCategory(String(restaurant.id), tab.slug);
+          return [tab.slug, (res.data ?? []).map(mapMenuDto)] as const;
+        }),
+      );
+
+      if (results.every(([, items]) => items.length === 0) && results.length > 0) {
+        const anyError = await api.getRestaurantMenuByCategory(String(restaurant.id), firstSlug);
+        if (anyError.error) {
+          setMenuNote('Catalog unavailable — connect to the API.');
+        } else {
+          setMenuNote(null);
+        }
+      } else {
+        setMenuNote(null);
       }
-      setMenuNote(null);
-      setFoodItems((foodRes.data ?? []).map(mapMenuDto));
-      setDrinkItems((drinksRes.data ?? []).map(mapMenuDto));
+
+      const mapped: Record<string, MenuItem[]> = {};
+      for (const [slug, items] of results) {
+        mapped[slug] = items;
+      }
+      setItemsBySlug(mapped);
+
       const cartIds = await fetchCartMenuItemIds();
       setSelectedMeals(cartIds);
     };
-    loadMenu();
+
+    void loadCatalog();
   }, [restaurant?.id]);
 
   // Fallback if no restaurant data passed
@@ -130,6 +163,7 @@ const RestaurantProfile = () => {
     const result = await quickAddToCart({
       restaurant_id: String(restaurant.id),
       menu_item_id: item.id,
+      product_id: item.id,
       name: item.name,
       unit_price: item.price,
       image_url: item.image,
@@ -157,7 +191,8 @@ const RestaurantProfile = () => {
   };
 
   const displayRestaurant = liveRestaurant ?? restaurant;
-  const currentItems = activeTab === 'food' ? foodItems : drinkItems;
+  const currentItems = itemsBySlug[activeTab] ?? [];
+  const activeTabLabel = tabs.find((t) => t.slug === activeTab)?.name ?? activeTab;
   const isOpen = restaurantIsOpen(displayRestaurant);
 
   const toggleOperatingHours = (e: MouseEvent<HTMLButtonElement>) => {
@@ -224,38 +259,32 @@ const RestaurantProfile = () => {
           </div>
         </div>
 
-        {/* Food/Drinks Tabs — glossy black glass */}
-        <div className="h-12 mb-6 flex justify-between rounded-xl border border-white/20 bg-white/8 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)] backdrop-blur-lg">
-          <button
-            onClick={() => setActiveTab('food')}
-            className={`w-full rounded-lg text-lg font-normal transition-colors ${
-              activeTab === 'food'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-transparent text-muted-foreground'
-            }`}
-          >
-            Food
-          </button>
-          <button
-            onClick={() => setActiveTab('drinks')}
-            className={`w-full rounded-lg text-lg font-normal transition-colors ${
-              activeTab === 'drinks'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-transparent text-muted-foreground'
-            }`}
-          >
-            Drinks
-          </button>
+        {/* Platform category tabs — driven by business type */}
+        <div className="mb-6 flex h-12 justify-between gap-1 overflow-x-auto rounded-xl border border-white/20 bg-white/8 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)] backdrop-blur-lg">
+          {tabs.map((tab) => (
+            <button
+              key={tab.slug}
+              type="button"
+              onClick={() => setActiveTab(tab.slug)}
+              className={`min-w-0 flex-1 rounded-lg px-2 text-lg font-normal transition-colors ${
+                activeTab === tab.slug
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-transparent text-muted-foreground'
+              }`}
+            >
+              {tab.name}
+            </button>
+          ))}
         </div>
 
         {menuNote && (
           <p className="mb-4 text-sm text-muted-foreground">{menuNote}</p>
         )}
 
-        {/* Menu items — Home-style cards; time via formatDeliveryTime (single mins or hr + mins) */}
+        {/* Catalog items — Home-style cards; time via formatDeliveryTime */}
         {currentItems.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            {activeTab === 'food' ? 'No food at the moment.' : 'No drinks at the moment.'}
+            No {activeTabLabel.toLowerCase()} at the moment.
           </p>
         ) : (
         <div className="grid grid-cols-2 min-[500px]:grid-cols-3 min-[700px]:grid-cols-4 gap-2 space-y-2 pb-8">

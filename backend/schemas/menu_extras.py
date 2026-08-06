@@ -20,6 +20,9 @@ class MenuItemCategoryResponse(BaseModel):
     image: Optional[str] = None
     delivery_minutes: Optional[int] = None
     description: Optional[str] = None
+    category: Optional[str] = None
+    vendor_category: Optional[str] = None
+    platform_category_id: Optional[str] = None
 
 
 class ModifierOptionResponse(BaseModel):
