@@ -39,12 +39,8 @@ const MenuOverlay: React.FC<MenuOverlayProps> = ({
   const displaySubtitle = user?.address || 'No address set';
 
   const handleItemClick = (path: string) => {
-    onClose();
-    if (path === '/location') {
-      navigate(path, { state: { fromMenu: true } });
-    } else {
-      navigate(path);
-    }
+    // Keep the menu history entry underneath so back restores the open menu.
+    navigate(path, { state: { fromMenu: true } });
   };
 
   const handleMenuRowClick = (path: string) => {

@@ -88,19 +88,24 @@ const Wallet: React.FC = () => {
       <div
         className={`relative shrink-0 ${responsivePx} pt-10${depositExpanded ? ' z-40' : ''}`}
       >
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 overflow-hidden rounded-full border border-foreground/30">
-            <img
-              src={user?.profile_image || PROFILE_AVATAR_IMAGE}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="h-10 w-10 overflow-hidden rounded-full border border-foreground/30"
+              aria-label="Open profile"
+            >
+              <img
+                src={user?.profile_image || PROFILE_AVATAR_IMAGE}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </button>
+            <div className="leading-tight">
+              <p className="text-xs text-foreground/80">Welcome,</p>
+              <h2 className="text-base font-semibold text-foreground">{fullName}</h2>
+            </div>
           </div>
-          <div className="leading-tight">
-            <p className="text-xs text-foreground/80">Welcome,</p>
-            <h2 className="text-base font-semibold text-foreground">{fullName}</h2>
-          </div>
-        </div>
 
         <div className="mt-14 flex flex-col items-center">
           <p className="text-xs text-foreground/80">Your balance</p>

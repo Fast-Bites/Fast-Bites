@@ -11,6 +11,11 @@ export interface BusinessRegistrationFormData {
   landmark: string;
   latitude?: number | null;
   longitude?: number | null;
+  /** 24h `HH:MM` — applied to selected working days on create */
+  openingTime?: string | null;
+  closingTime?: string | null;
+  /** Weekday indexes Mon=0 … Sun=6 that are open */
+  workingDays?: number[] | null;
   bankName: string;
   accountNumber: string;
   accountName: string;
@@ -30,6 +35,9 @@ export function toBusinessRegistrationPayload(data: BusinessRegistrationFormData
     landmark: data.landmark,
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
+    opening_time: data.openingTime ?? null,
+    closing_time: data.closingTime ?? null,
+    working_days: data.workingDays ?? null,
     bank_name: data.bankName,
     account_number: data.accountNumber,
     account_holder_name: data.accountName,

@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { addCartItem } from '../lib/cartApi';
 import {
   buildOptionsJson,
-  buildSizeOptionsJson,
   cartItemNameForServings,
   fetchMealModifiers,
   type ModifierOption,
@@ -48,8 +47,6 @@ const emptyServing = (): Serving => ({
   extrasOpen: false,
 });
 
-const SIZE_LABELS = ['Small', 'Medium', 'Large'] as const;
-
 function parseMealState(state: unknown): MealData | null {
   if (!state || typeof state !== 'object') return null;
   if ('meal' in state && state.meal && typeof state.meal === 'object') {
@@ -68,19 +65,16 @@ const MealDetails: React.FC = () => {
   }>();
 
   const meal = useMemo(() => parseMealState(location.state), [location.state]);
-  const fromRestaurantContext = Boolean(restaurantId);
   const mealItemId = mealId ?? homeMealId ?? meal?.id;
 
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
-  const [selectedSizeId, setSelectedSizeId] = useState('');
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
   const [orderBusy, setOrderBusy] = useState(false);
 
   const [proteinOptions, setProteinOptions] = useState<ModifierOption[]>([]);
   const [extrasOptions, setExtrasOptions] = useState<ModifierOption[]>([]);
-  const [sizeOptions, setSizeOptions] = useState<ModifierOption[]>([]);
   const [modifiersNote, setModifiersNote] = useState<string | null>(null);
   const [modifiersLoading, setModifiersLoading] = useState(false);
 
@@ -91,30 +85,14 @@ const MealDetails: React.FC = () => {
     if (!mealItemId) return;
     setModifiersLoading(true);
     fetchMealModifiers(mealItemId).then(
-      ({ proteinOptions: proteins, extrasOptions: extras, sizeOptions: sizes, modifiersNote: note }) => {
-        if (fromRestaurantContext) {
-          setProteinOptions(proteins);
-          setExtrasOptions(extras);
-          setModifiersNote(note);
-        } else {
-          setProteinOptions([]);
-          setExtrasOptions([]);
-          setModifiersNote(null);
-          setSizeOptions(sizes);
-        }
+      ({ proteinOptions: proteins, extrasOptions: extras, modifiersNote: note }) => {
+        setProteinOptions(proteins);
+        setExtrasOptions(extras);
+        setModifiersNote(note);
         setModifiersLoading(false);
       },
     );
-  }, [fromRestaurantContext, mealItemId]);
-
-  useEffect(() => {
-    if (fromRestaurantContext || sizeOptions.length === 0) return;
-    setSelectedSizeId((prev) => {
-      if (prev && sizeOptions.some((o) => o.id === prev)) return prev;
-      const medium = sizeOptions.find((o) => o.label.toLowerCase() === 'medium');
-      return medium?.id ?? sizeOptions[0].id;
-    });
-  }, [fromRestaurantContext, sizeOptions]);
+  }, [mealItemId]);
 
   // Bottom sheet state
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -161,22 +139,8 @@ const MealDetails: React.FC = () => {
     return m;
   }, [extrasOptions]);
 
-  const sizePriceById = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const o of sizeOptions) m[o.id] = o.price;
-    return m;
-  }, [sizeOptions]);
-
-  const sizeByLabel = useMemo(() => {
-    const m = new Map<string, ModifierOption>();
-    for (const o of sizeOptions) m.set(o.label.toLowerCase(), o);
-    return m;
-  }, [sizeOptions]);
-
-  const selectedSizeOption = sizeOptions.find((o) => o.id === selectedSizeId);
-  const sizePriceDelta = selectedSizeId ? sizePriceById[selectedSizeId] ?? 0 : 0;
-
   const proteinRequired = proteinOptions.length > 0;
+  const hasModifiers = proteinOptions.length > 0 || extrasOptions.length > 0;
 
   const preserveSheetScroll = (update: () => void) => {
     const el = sheetScrollRef.current;
@@ -261,80 +225,56 @@ const MealDetails: React.FC = () => {
 
   const basePrice = parseFloat(meal.price.replace(/[₦,]/g, ''));
 
-  // Calculate total across all servings
-  const servingsCost = fromRestaurantContext
-    ? servings.reduce((sum, s) => {
-        const sc = s.proteinId ? proteinPriceById[s.proteinId] ?? 0 : 0;
-        const ec = s.extrasId ? extrasPriceById[s.extrasId] ?? 0 : 0;
-        return sum + sc + ec;
-      }, 0)
-    : 0;
-  const homeUnitPrice = basePrice + sizePriceDelta;
-  const totalPrice = fromRestaurantContext
-    ? basePrice * quantity + servingsCost
-    : homeUnitPrice * quantity;
+  const servingsCost = servings.reduce((sum, s) => {
+    const sc = s.proteinId ? proteinPriceById[s.proteinId] ?? 0 : 0;
+    const ec = s.extrasId ? extrasPriceById[s.extrasId] ?? 0 : 0;
+    return sum + sc + ec;
+  }, 0);
+  const totalPrice = basePrice * quantity + servingsCost;
+
+  const resolveRestaurantId = (): string | undefined =>
+    restaurantId ?? meal.restaurant_id;
 
   const addCurrentMealToCart = async (): Promise<{
     ok: boolean;
     restaurantId?: string;
     error?: string;
   }> => {
-    if (fromRestaurantContext) {
-      if (!restaurantId) return { ok: false, error: 'Restaurant not found.' };
-      if (proteinRequired && servings.some((s) => !s.proteinId)) {
-        return { ok: false, error: 'Please choose a protein for each serving.' };
-      }
-      const lineUnitPrice =
-        quantity > 0 ? (basePrice * quantity + servingsCost) / quantity : basePrice;
-      const result = await addCartItem({
-        restaurant_id: restaurantId,
-        menu_item_id: meal.id,
-        product_id: meal.id,
-        name: cartItemNameForServings(meal.name, servings.length),
-        unit_price: lineUnitPrice,
-        quantity,
-        image_url: meal.image,
-        section: 'main',
-        options_json: buildOptionsJson(
-          servings,
-          proteinPriceById,
-          extrasPriceById,
-          basePrice,
-          meal.name,
-        ),
-        special_instructions: note.trim() || undefined,
-      });
-      if (!result.ok) {
-        return { ok: false, error: result.error ?? 'Could not add to cart — sign in and try again.' };
-      }
-      return { ok: true, restaurantId };
-    }
-
-    const homeRestaurantId = meal.restaurant_id;
-    if (!homeRestaurantId) {
+    const cartRestaurantId = resolveRestaurantId();
+    if (!cartRestaurantId) {
       return { ok: false, error: 'Restaurant information is missing for this meal.' };
     }
-    if (sizeOptions.length > 0 && !selectedSizeId) {
-      return { ok: false, error: 'Please choose a size.' };
+    if (proteinRequired && servings.some((s) => !s.proteinId)) {
+      return { ok: false, error: 'Please choose a protein for each serving.' };
     }
+    const lineUnitPrice =
+      quantity > 0 ? (basePrice * quantity + servingsCost) / quantity : basePrice;
     const result = await addCartItem({
-      restaurant_id: homeRestaurantId,
+      restaurant_id: cartRestaurantId,
       menu_item_id: meal.id,
       product_id: meal.id,
-      name: meal.name,
-      unit_price: homeUnitPrice,
+      name: hasModifiers
+        ? cartItemNameForServings(meal.name, servings.length)
+        : meal.name,
+      unit_price: lineUnitPrice,
       quantity,
       image_url: meal.image,
       section: 'main',
-      options_json: selectedSizeOption
-        ? buildSizeOptionsJson(selectedSizeId, selectedSizeOption.label, sizePriceDelta)
+      options_json: hasModifiers
+        ? buildOptionsJson(
+            servings,
+            proteinPriceById,
+            extrasPriceById,
+            basePrice,
+            meal.name,
+          )
         : {},
       special_instructions: note.trim() || undefined,
     });
     if (!result.ok) {
       return { ok: false, error: result.error ?? 'Could not add to cart — sign in and try again.' };
     }
-    return { ok: true, restaurantId: homeRestaurantId };
+    return { ok: true, restaurantId: cartRestaurantId };
   };
 
   const handleAddToCart = async () => {
@@ -571,11 +511,7 @@ const MealDetails: React.FC = () => {
 
       {/* Header */}
       <div className={`absolute top-0 left-0 right-0 z-[50] ${responsivePx} pt-10`}>
-        <BackButton
-          variant="map"
-          title="Details"
-          {...(fromRestaurantContext ? {} : { to: '/home' })}
-        />
+        <BackButton variant="map" title="Details" />
       </div>
 
       {/* Bottom Sheet */}
@@ -608,7 +544,7 @@ const MealDetails: React.FC = () => {
           <div
             ref={sheetScrollRef}
             className={`flex-1 min-h-0 ${responsivePx} bg-background rounded-t-4xl ${
-              fromRestaurantContext && !sheetExpanded
+              !sheetExpanded
                 ? 'overflow-y-hidden'
                 : 'overflow-y-auto overscroll-y-contain'
             } ${sheetExpanded ? 'pb-6' : ''}`}
@@ -645,7 +581,7 @@ const MealDetails: React.FC = () => {
               ))}
             </div>
 
-            {fromRestaurantContext ? (
+            {(modifiersLoading || hasModifiers) && (
               <div
                 className={!sheetExpanded ? 'pointer-events-none select-none opacity-50' : undefined}
                 aria-hidden={!sheetExpanded}
@@ -656,49 +592,24 @@ const MealDetails: React.FC = () => {
                 {!modifiersLoading && modifiersNote && (
                   <p className="mb-4 text-sm text-muted-foreground">{modifiersNote}</p>
                 )}
-                {servings.map((serving, idx) => renderServing(serving, idx))}
+                {!modifiersLoading &&
+                  hasModifiers &&
+                  servings.map((serving, idx) => renderServing(serving, idx))}
 
-                {/* Add another serving button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!sheetExpanded) return;
-                    addServing();
-                  }}
-                  tabIndex={sheetExpanded ? 0 : -1}
-                  className="mt-4 mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent py-3 text-sm font-medium text-primary transition-opacity hover:opacity-80"
-                >
-                  <img src="/assets/more serving.svg" alt="" className="h-5 w-5" />
-                  Add another serving
-                </button>
-              </div>
-            ) : (
-              <div className="mb-4">
-                <h3 className="text-foreground text-lg font-light mb-2">Size Options:</h3>
-                <div className="flex gap-3">
-                  {SIZE_LABELS.map((label) => {
-                    const opt = sizeByLabel.get(label.toLowerCase());
-                    const available = Boolean(opt) && !modifiersLoading;
-                    const selected = available && selectedSizeId === opt?.id;
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        disabled={!available}
-                        onClick={() => opt && setSelectedSizeId(opt.id)}
-                        className={`flex-1 py-2 rounded-full text-xs font-light transition-all ${
-                          !available
-                            ? 'cursor-not-allowed border border-muted-foreground/35 bg-transparent text-muted-foreground'
-                            : selected
-                              ? 'bg-primary border border-primary text-primary-foreground'
-                              : 'bg-transparent border border-primary text-muted-foreground'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {!modifiersLoading && hasModifiers ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!sheetExpanded) return;
+                      addServing();
+                    }}
+                    tabIndex={sheetExpanded ? 0 : -1}
+                    className="mt-4 mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent py-3 text-sm font-medium text-primary transition-opacity hover:opacity-80"
+                  >
+                    <img src="/assets/more serving.svg" alt="" className="h-5 w-5" />
+                    Add another serving
+                  </button>
+                ) : null}
               </div>
             )}
 

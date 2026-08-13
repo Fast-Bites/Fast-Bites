@@ -21,7 +21,7 @@ export interface CatalogModifierOption {
 }
 
 export interface CatalogModifierGroup {
-  group: 'protein' | 'extras' | 'size' | string;
+  group: 'protein' | 'extras' | string;
   options: CatalogModifierOption[];
 }
 
@@ -29,7 +29,6 @@ export interface MenuItemDraft {
   id: string;
   name: string;
   price: string;
-  portionSize: string;
   duration: string;
   /** Free-text label the vendor uses (backend maps to platform category) */
   vendorCategory: string;
@@ -42,7 +41,6 @@ export function createEmptyMenuItem(id?: string): MenuItemDraft {
     id: id ?? `menu-item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: '',
     price: '',
-    portionSize: '',
     duration: '',
     vendorCategory: '',
     modifiers: [],
@@ -97,8 +95,6 @@ export function minutesToDuration(minutes: number | null | undefined): string {
   const m = total % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
 }
-
-export const PORTION_SIZE_OPTIONS = ['Small', 'Medium', 'Large', 'Regular'] as const;
 
 export const MENU_SCAN_ACCEPT = 'image/jpeg,image/png,image/webp';
 export const MENU_SCAN_ACCEPT_HINT = 'JPEG, PNG, WebP';

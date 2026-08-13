@@ -10,6 +10,8 @@ import {
   type DocumentFieldConfig,
 } from '@/lib/businessDocumentation';
 import { vendorApi } from '@/lib/api';
+import { MAX_DOCUMENT_UPLOAD_BYTES } from '@/lib/uploadLimits';
+import { UPLOADS_IN_PROGRESS_MESSAGE } from '@fast-bites/shared';
 
 const DOCUMENT_ACCEPT = 'image/*,application/pdf';
 
@@ -54,7 +56,7 @@ export default function BusinessDocumentationForm({
     [config.documents, uploads],
   );
 
-  const canProceed = requiredComplete && !isUploading && !submitting;
+  const canProceed = requiredComplete && !submitting;
 
   const handleFileSelect = useCallback(async (documentId: string, file: File | null) => {
     if (!file) {
@@ -83,7 +85,23 @@ export default function BusinessDocumentationForm({
     });
   }, []);
 
+  const handleValidationError = useCallback((documentId: string, message: string) => {
+    setUploads((current) => ({
+      ...current,
+      [documentId]: {
+        url: current[documentId]?.url ?? null,
+        uploading: false,
+        error: message,
+      },
+    }));
+  }, []);
+
   const handleSubmit = async () => {
+    if (isUploading) {
+      setSubmitError(UPLOADS_IN_PROGRESS_MESSAGE);
+      return;
+    }
+
     if (!canProceed) {
       return;
     }
@@ -109,35 +127,48 @@ export default function BusinessDocumentationForm({
   };
 
   return (
-    <>
-      <RegistrationSectionHeader title={config.sectionTitle} description={config.sectionDescription} />
+    <section className="relative flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable]">
+        <RegistrationSectionHeader title={config.sectionTitle} description={config.sectionDescription} />
 
-      <section className="space-y-6 [color-scheme:light]">
-        {config.documents.map((doc) => (
-          <UploadField
-            key={doc.id}
-            label={doc.label}
-            required={doc.required}
-            accept={DOCUMENT_ACCEPT}
-            previewUrl={uploads[doc.id]?.url}
-            uploading={uploads[doc.id]?.uploading}
-            error={uploads[doc.id]?.error}
-            onFileSelect={(file) => void handleFileSelect(doc.id, file)}
-          />
-        ))}
-      </section>
+        <div className="space-y-6 [color-scheme:light]">
+          {config.documents.map((doc) => (
+            <UploadField
+              key={doc.id}
+              label={doc.label}
+              required={doc.required}
+              accept={DOCUMENT_ACCEPT}
+              maxBytes={MAX_DOCUMENT_UPLOAD_BYTES}
+              previewUrl={uploads[doc.id]?.url}
+              uploading={uploads[doc.id]?.uploading}
+              error={uploads[doc.id]?.error}
+              onFileSelect={(file) => void handleFileSelect(doc.id, file)}
+              onValidationError={(message) => handleValidationError(doc.id, message)}
+            />
+          ))}
+        </div>
 
-      {submitError ? (
-        <p className="mt-4 text-sm text-red-600" role="alert">
-          {submitError}
-        </p>
-      ) : null}
+        {isUploading ? (
+          <p className="mt-4 text-sm text-gray-600" role="status">
+            {UPLOADS_IN_PROGRESS_MESSAGE}
+          </p>
+        ) : null}
 
-      <RegistrationStepFooter
-        onNext={() => void handleSubmit()}
-        label={submitting ? 'Submitting…' : 'Next'}
-        disabled={!canProceed}
-      />
-    </>
+        {submitError ? (
+          <p className="mt-4 text-sm text-red-600" role="alert">
+            {submitError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="relative shrink-0">
+        <RegistrationStepFooter
+          sticky
+          onNext={() => void handleSubmit()}
+          label={submitting ? 'Submitting…' : isUploading ? 'Uploading…' : 'Next'}
+          disabled={!canProceed || isUploading}
+        />
+      </div>
+    </section>
   );
 }

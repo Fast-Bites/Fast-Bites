@@ -15,8 +15,15 @@ import UploadField from '@/components/UploadField';
 import type { BusinessRegistrationFormData } from '@/lib/businessRegistration';
 import { BUSINESS_TYPES } from '@/lib/businessDocumentation';
 import { vendorApi, vendorAuth } from '@/lib/api';
+import BusinessActiveHoursFields, {
+  DEFAULT_ACTIVE_HOURS,
+  activeHoursToPayload,
+  type ActiveHoursValue,
+} from '@/components/BusinessActiveHoursFields';
 import BusinessLocationFields from '@/components/BusinessLocationFields';
 import { parseCoordinateInput } from '@/lib/locationGeocoding';
+import { MAX_IMAGE_UPLOAD_BYTES } from '@/lib/uploadLimits';
+import { UPLOADS_IN_PROGRESS_MESSAGE } from '@fast-bites/shared';
 
 const TOTAL_STEPS = 4;
 
@@ -26,13 +33,12 @@ function validateStep(
     businessName: string;
     businessOwner: string;
     businessType: string;
+    activeHours: ActiveHoursValue;
     phone: string;
     contactPerson: string;
     email: string;
     address: string;
     landmark: string;
-    latitude: string;
-    longitude: string;
     bankName: string;
     accountNumber: string;
     accountName: string;
@@ -42,40 +48,28 @@ function validateStep(
     value.trim() ? null : `${label} is required.`;
 
   switch (step) {
-    case 1:
-      return (
+    case 1: {
+      const base =
         required(values.businessName, 'Business name') ??
         required(values.businessOwner, 'Business owner') ??
-        required(values.businessType, 'Business type')
-      );
+        required(values.businessType, 'Business type');
+      if (base) return base;
+      if (!values.activeHours.workingDays) {
+        return 'Working days is required.';
+      }
+      if (!activeHoursToPayload(values.activeHours)) {
+        return 'Enter valid operating hours (e.g. 9:00 am to 10:00 pm).';
+      }
+      return null;
+    }
     case 2:
       return (
         required(values.phone, 'Phone') ??
         required(values.contactPerson, 'Contact person') ??
         required(values.email, 'Email')
       );
-    case 3: {
-      const addressError =
-        required(values.address, 'Address') ?? required(values.landmark, 'Landmark');
-      if (addressError) return addressError;
-
-      const hasLatitude = values.latitude.trim().length > 0;
-      const hasLongitude = values.longitude.trim().length > 0;
-
-      if (hasLatitude !== hasLongitude) {
-        return 'Enter both latitude and longitude, or leave both empty.';
-      }
-
-      if (hasLatitude && parseCoordinateInput(values.latitude) == null) {
-        return 'Latitude must be a valid number.';
-      }
-
-      if (hasLongitude && parseCoordinateInput(values.longitude) == null) {
-        return 'Longitude must be a valid number.';
-      }
-
-      return null;
-    }
+    case 3:
+      return required(values.address, 'Address') ?? required(values.landmark, 'Landmark');
     case 4:
       return (
         required(values.bankName, 'Bank name') ??
@@ -95,6 +89,7 @@ export default function VerifyBusiness() {
   const [businessName, setBusinessName] = useState('');
   const [businessOwner, setBusinessOwner] = useState('');
   const [businessType, setBusinessType] = useState('');
+  const [activeHours, setActiveHours] = useState<ActiveHoursValue>(DEFAULT_ACTIVE_HOURS);
   const [phone, setPhone] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
@@ -173,7 +168,7 @@ export default function VerifyBusiness() {
 
   const handleNext = () => {
     if (step === 1 && (logoUploading || coverUploading)) {
-      setStepError('Please wait for image uploads to finish.');
+      setStepError(UPLOADS_IN_PROGRESS_MESSAGE);
       return;
     }
 
@@ -181,13 +176,12 @@ export default function VerifyBusiness() {
       businessName,
       businessOwner,
       businessType,
+      activeHours,
       phone,
       contactPerson,
       email,
       address,
       landmark,
-      latitude,
-      longitude,
       bankName,
       accountNumber,
       accountName,
@@ -205,6 +199,8 @@ export default function VerifyBusiness() {
       return;
     }
 
+    const hours = activeHoursToPayload(activeHours);
+
     const payload: BusinessRegistrationFormData = {
       businessName,
       businessOwner,
@@ -218,6 +214,9 @@ export default function VerifyBusiness() {
       landmark,
       latitude: parseCoordinateInput(latitude),
       longitude: parseCoordinateInput(longitude),
+      openingTime: hours?.opening_time ?? null,
+      closingTime: hours?.closing_time ?? null,
+      workingDays: hours?.working_days ?? null,
       bankName,
       accountNumber,
       accountName,
@@ -227,15 +226,18 @@ export default function VerifyBusiness() {
   };
 
   return (
-    <RegistrationPageShell>
+    <RegistrationPageShell fillViewport>
+      <div className="shrink-0">
         <RegistrationPageHeader
           title="Details"
           subtitle="Register to get your business onboard"
           activeStep={step}
           totalSteps={TOTAL_STEPS}
         />
+      </div>
 
-        <section className="flex min-h-0 flex-1 flex-col">
+      <section className="relative flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-2 [scrollbar-gutter:stable]">
           {step === 1 ? (
             <>
               <RegistrationSectionHeader
@@ -283,20 +285,26 @@ export default function VerifyBusiness() {
                   </FormSelect>
                 </FormField>
 
+                <BusinessActiveHoursFields value={activeHours} onChange={setActiveHours} />
+
                 <div className="grid gap-6 md:grid-cols-2">
                   <UploadField
                     label="Logo"
+                    maxBytes={MAX_IMAGE_UPLOAD_BYTES}
                     previewUrl={logoPreview}
                     uploading={logoUploading}
                     error={logoUploadError}
                     onFileSelect={handleLogoSelect}
+                    onValidationError={setLogoUploadError}
                   />
                   <UploadField
                     label="Cover Image"
+                    maxBytes={MAX_IMAGE_UPLOAD_BYTES}
                     previewUrl={coverPreview}
                     uploading={coverUploading}
                     error={coverUploadError}
                     onFileSelect={handleCoverSelect}
+                    onValidationError={setCoverUploadError}
                   />
                 </div>
               </div>
@@ -405,15 +413,18 @@ export default function VerifyBusiness() {
               </div>
             </>
           ) : null}
-        </section>
 
-        {stepError ? (
-          <p className="mt-4 text-sm text-red-600" role="alert">
-            {stepError}
-          </p>
-        ) : null}
+          {stepError ? (
+            <p className="mt-4 text-sm text-red-600" role="alert">
+              {stepError}
+            </p>
+          ) : null}
+        </div>
 
-        <RegistrationStepFooter onNext={handleNext} label="Next" />
+        <div className="relative shrink-0">
+          <RegistrationStepFooter sticky onNext={handleNext} label="Next" />
+        </div>
+      </section>
     </RegistrationPageShell>
   );
 }

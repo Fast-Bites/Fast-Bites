@@ -18,6 +18,9 @@ class BusinessRegistrationRequest(BaseModel):
     landmark: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    opening_time: Optional[str] = None  # "HH:MM" or "HH:MM:SS"
+    closing_time: Optional[str] = None
+    working_days: Optional[list[int]] = None  # Mon=0 … Sun=6
     bank_name: Optional[str] = None
     account_number: Optional[str] = None
     account_holder_name: Optional[str] = None
@@ -61,7 +64,7 @@ class CatalogModifierOption(BaseModel):
 
 
 class CatalogModifierGroup(BaseModel):
-    """group is protein | extras | size (sauces belong under extras)."""
+    """group is protein | extras (sauces belong under extras). Size is not a modifier."""
 
     group: str = Field(min_length=1)
     options: list[CatalogModifierOption] = Field(default_factory=list)
@@ -75,7 +78,6 @@ class CatalogItemCreate(BaseModel):
     delivery_time: Optional[int] = Field(default=None, ge=0)
     description: Optional[str] = None
     image_url: Optional[str] = None
-    portion_size: Optional[str] = None
     modifiers: list[CatalogModifierGroup] = Field(default_factory=list)
 
 
@@ -94,7 +96,6 @@ class CatalogExtractedItem(BaseModel):
     name: str
     price: float
     vendor_category: Optional[str] = None
-    portion_size: Optional[str] = None
     delivery_time: Optional[int] = None
     modifiers: list[CatalogModifierGroup] = Field(default_factory=list)
 

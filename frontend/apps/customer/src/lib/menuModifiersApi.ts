@@ -9,9 +9,7 @@ export interface ModifierOption {
 export interface MealModifiers {
   proteinOptions: ModifierOption[];
   extrasOptions: ModifierOption[];
-  sizeOptions: ModifierOption[];
   modifiersNote: string | null;
-  sizeNote: string | null;
 }
 
 function isProteinGroup(name: string): boolean {
@@ -41,9 +39,7 @@ export async function fetchMealModifiers(menuItemId: string): Promise<MealModifi
     return {
       proteinOptions: [],
       extrasOptions: [],
-      sizeOptions: [],
       modifiersNote: 'Could not load options.',
-      sizeNote: 'Could not load size options.',
     };
   }
 
@@ -53,46 +49,27 @@ export async function fetchMealModifiers(menuItemId: string): Promise<MealModifi
 
   const proteinOptions: ModifierOption[] = [];
   const extrasOptions: ModifierOption[] = [];
-  const sizeOptions: ModifierOption[] = [];
 
   for (const g of groups) {
+    // Legacy Size groups are ignored — sizes are separate products.
+    if (isSizeGroup(g.name)) continue;
+
     const opts = (g.options ?? []).map((o) => ({
       id: o.id,
       label: o.label,
       price: o.price_delta,
     }));
-    if (isSizeGroup(g.name)) sizeOptions.push(...opts);
-    else if (isProteinGroup(g.name)) proteinOptions.push(...opts);
+    if (isProteinGroup(g.name)) proteinOptions.push(...opts);
     else if (isExtrasGroup(g.name)) extrasOptions.push(...opts);
     else {
-      // Unknown group names → extras (safe default)
       extrasOptions.push(...opts);
     }
   }
 
   let modifiersNote: string | null = null;
-  if (proteinOptions.length === 0 && extrasOptions.length === 0) {
-    modifiersNote = groups.length === 0 ? 'No protein or extras for this item yet.' : null;
-  }
+  // Empty modifiers are normal — UI hides the options block; no note needed.
 
-  let sizeNote: string | null = null;
-  if (sizeOptions.length === 0) {
-    sizeNote = 'No size options for this item yet.';
-  }
-
-  return { proteinOptions, extrasOptions, sizeOptions, modifiersNote, sizeNote };
-}
-
-export function buildSizeOptionsJson(
-  sizeId: string,
-  sizeLabel: string,
-  sizePrice: number,
-): Record<string, unknown> {
-  return {
-    size: sizeLabel,
-    size_id: sizeId,
-    size_price: sizePrice,
-  };
+  return { proteinOptions, extrasOptions, modifiersNote };
 }
 
 export function buildOptionsJson(

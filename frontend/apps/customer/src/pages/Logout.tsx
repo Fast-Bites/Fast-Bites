@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/api';
 import { clearActiveRole, clearSelectedRole } from '../lib/activeRole';
+import { clearCatalogCache } from '../lib/catalogCache';
 import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
 
 /**
@@ -18,6 +19,7 @@ const Logout: React.FC = () => {
       await auth.signout();
       clearActiveRole();
       clearSelectedRole();
+      clearCatalogCache();
       sessionStorage.removeItem('signup_email');
       if (!cancelled) {
         navigate('/role-selection', { replace: true });

@@ -1,6 +1,10 @@
 import { useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { formLabelClassName } from '@/components/FormField';
+import {
+  formatUploadSizeLimit,
+  validateUploadFileSize,
+} from '@/lib/uploadLimits';
 
 const UPLOAD_BORDER_DASH = '10 10';
 
@@ -14,7 +18,11 @@ interface UploadFieldProps {
   uploading?: boolean;
   error?: string | null;
   accept?: string;
+  /** When set, reject oversized files before upload. Omit for unlimited (rare). */
+  maxBytes?: number;
   onFileSelect: (file: File | null) => void;
+  /** Called when a selected file exceeds maxBytes (so parent can clear preview state). */
+  onValidationError?: (message: string) => void;
 }
 
 export default function UploadField({
@@ -24,11 +32,30 @@ export default function UploadField({
   uploading,
   error,
   accept = 'image/*',
+  maxBytes,
   onFileSelect,
+  onValidationError,
 }: UploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isImagePreview =
     previewUrl && !previewUrl.toLowerCase().endsWith('.pdf') && !previewUrl.includes('/raw/upload/');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file) {
+      onFileSelect(null);
+      return;
+    }
+    if (maxBytes != null) {
+      const sizeError = validateUploadFileSize(file, maxBytes);
+      if (sizeError) {
+        onValidationError?.(sizeError);
+        return;
+      }
+    }
+    onFileSelect(file);
+  };
 
   return (
     <div>
@@ -92,13 +119,18 @@ export default function UploadField({
           />
         </svg>
       </div>
+      {maxBytes != null ? (
+        <p className="mt-1 text-[10px] leading-tight text-gray-400">
+          Max {formatUploadSizeLimit(maxBytes)}
+        </p>
+      ) : null}
       {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
       <input
         ref={inputRef}
         type="file"
         accept={accept}
         className="hidden"
-        onChange={(event) => onFileSelect(event.target.files?.[0] ?? null)}
+        onChange={handleChange}
       />
     </div>
   );

@@ -19,6 +19,11 @@ import {
   restaurantOperatingHoursText,
 } from '../lib/restaurantHours';
 import { RestaurantCover, RestaurantLogo } from '../components/RestaurantMedia';
+import {
+  catalogCacheKeys,
+  loadWithCache,
+  peekCached,
+} from '../lib/catalogCache';
 
 interface MenuItem {
   id: string;
@@ -27,6 +32,13 @@ interface MenuItem {
   image: string;
   deliveryMinutes?: number;
 }
+
+type RestaurantCatalogCache = {
+  liveRestaurant: Restaurant | null;
+  tabs: PlatformCategoryDto[];
+  itemsBySlug: Record<string, MenuItem[]>;
+  menuNote: string | null;
+};
 
 function mapMenuDto(row: RestaurantMenuItemDto): MenuItem {
   return {
@@ -41,20 +53,81 @@ function mapMenuDto(row: RestaurantMenuItemDto): MenuItem {
 const FALLBACK_TABS: PlatformCategoryDto[] = [
   { id: 'food', business_type: 'Restaurant', slug: 'food', name: 'Food', sort_order: 1 },
   { id: 'drinks', business_type: 'Restaurant', slug: 'drinks', name: 'Drinks', sort_order: 2 },
+  { id: 'desserts', business_type: 'Restaurant', slug: 'desserts', name: 'Desserts', sort_order: 3 },
+  { id: 'sides', business_type: 'Restaurant', slug: 'sides', name: 'Sides', sort_order: 4 },
 ];
+
+async function fetchRestaurantCatalog(
+  restaurantId: string,
+  fallbackBusinessType?: string,
+): Promise<RestaurantCatalogCache> {
+  const restaurantRes = await api.getRestaurant(restaurantId);
+  const liveRestaurant = (restaurantRes.data as Restaurant | undefined) ?? null;
+
+  const businessType =
+    liveRestaurant?.business_type || fallbackBusinessType || 'Restaurant';
+  const categoriesRes = await api.getPlatformCategories(businessType);
+  const nextTabs =
+    categoriesRes.data && categoriesRes.data.length > 0
+      ? categoriesRes.data.filter((c) => c.slug !== 'other' && c.slug !== 'bakery')
+      : FALLBACK_TABS;
+  const firstSlug = nextTabs[0]?.slug ?? 'food';
+
+  const results = await Promise.all(
+    nextTabs.map(async (tab) => {
+      const res = await api.getRestaurantMenuByCategory(restaurantId, tab.slug);
+      return [tab.slug, (res.data ?? []).map(mapMenuDto)] as const;
+    }),
+  );
+
+  let menuNote: string | null = null;
+  if (results.every(([, items]) => items.length === 0) && results.length > 0) {
+    const anyError = await api.getRestaurantMenuByCategory(restaurantId, firstSlug);
+    if (anyError.error) {
+      menuNote = 'Catalog unavailable — connect to the API.';
+    }
+  }
+
+  const itemsBySlug: Record<string, MenuItem[]> = {};
+  for (const [slug, items] of results) {
+    itemsBySlug[slug] = items;
+  }
+
+  return { liveRestaurant, tabs: nextTabs, itemsBySlug, menuNote };
+}
 
 const RestaurantProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [tabs, setTabs] = useState<PlatformCategoryDto[]>(FALLBACK_TABS);
-  const [activeTab, setActiveTab] = useState('food');
+  // Get restaurant data from navigation state
+  const restaurant: Restaurant | undefined = location.state?.restaurant;
+  const catalogKey = restaurant?.id
+    ? catalogCacheKeys.restaurantCatalog(String(restaurant.id))
+    : null;
+  const initialCatalog = catalogKey
+    ? peekCached<RestaurantCatalogCache>(catalogKey)
+    : null;
+
+  const [tabs, setTabs] = useState<PlatformCategoryDto[]>(
+    () => initialCatalog?.tabs ?? FALLBACK_TABS,
+  );
+  const [activeTab, setActiveTab] = useState(
+    () => initialCatalog?.tabs[0]?.slug ?? 'food',
+  );
   const [selectedMeals, setSelectedMeals] = useState<Set<string>>(new Set());
   const [showHoursOverlay, setShowHoursOverlay] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
-  const [itemsBySlug, setItemsBySlug] = useState<Record<string, MenuItem[]>>({});
-  const [menuNote, setMenuNote] = useState<string | null>(null);
-  const [liveRestaurant, setLiveRestaurant] = useState<Restaurant | null>(null);
+  const [itemsBySlug, setItemsBySlug] = useState<Record<string, MenuItem[]>>(
+    () => initialCatalog?.itemsBySlug ?? {},
+  );
+  const [menuNote, setMenuNote] = useState<string | null>(
+    () => initialCatalog?.menuNote ?? null,
+  );
+  const [menuLoading, setMenuLoading] = useState(() => initialCatalog == null);
+  const [liveRestaurant, setLiveRestaurant] = useState<Restaurant | null>(
+    () => initialCatalog?.liveRestaurant ?? null,
+  );
   const cartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -69,57 +142,55 @@ const RestaurantProfile = () => {
     };
   }, []);
 
-  // Get restaurant data from navigation state
-  const restaurant: Restaurant | undefined = location.state?.restaurant;
-
   useEffect(() => {
-    if (!restaurant?.id) return;
+    if (!restaurant?.id || !catalogKey) return;
+
+    let cancelled = false;
 
     const loadCatalog = async () => {
-      const restaurantRes = await api.getRestaurant(String(restaurant.id));
-      if (restaurantRes.data) setLiveRestaurant(restaurantRes.data as Restaurant);
-
-      const businessType =
-        restaurantRes.data?.business_type || restaurant.business_type || 'Restaurant';
-      const categoriesRes = await api.getPlatformCategories(businessType);
-      const nextTabs =
-        categoriesRes.data && categoriesRes.data.length > 0
-          ? categoriesRes.data.filter((c) => c.slug !== 'other' && c.slug !== 'bakery')
-          : FALLBACK_TABS;
-      setTabs(nextTabs);
-      const firstSlug = nextTabs[0]?.slug ?? 'food';
-      setActiveTab(firstSlug);
-
-      const results = await Promise.all(
-        nextTabs.map(async (tab) => {
-          const res = await api.getRestaurantMenuByCategory(String(restaurant.id), tab.slug);
-          return [tab.slug, (res.data ?? []).map(mapMenuDto)] as const;
-        }),
-      );
-
-      if (results.every(([, items]) => items.length === 0) && results.length > 0) {
-        const anyError = await api.getRestaurantMenuByCategory(String(restaurant.id), firstSlug);
-        if (anyError.error) {
-          setMenuNote('Catalog unavailable — connect to the API.');
-        } else {
-          setMenuNote(null);
-        }
-      } else {
+      if (peekCached(catalogKey) == null) {
+        setMenuLoading(true);
         setMenuNote(null);
       }
 
-      const mapped: Record<string, MenuItem[]> = {};
-      for (const [slug, items] of results) {
-        mapped[slug] = items;
+      try {
+        await loadWithCache(
+          catalogKey,
+          () =>
+            fetchRestaurantCatalog(
+              String(restaurant.id),
+              restaurant.business_type,
+            ),
+          (catalog) => {
+            if (cancelled) return;
+            if (catalog.liveRestaurant) setLiveRestaurant(catalog.liveRestaurant);
+            setTabs(catalog.tabs);
+            setItemsBySlug(catalog.itemsBySlug);
+            setMenuNote(catalog.menuNote);
+            setActiveTab((prev) => {
+              const slugs = catalog.tabs.map((t) => t.slug);
+              if (slugs.includes(prev)) return prev;
+              return catalog.tabs[0]?.slug ?? 'food';
+            });
+            setMenuLoading(false);
+          },
+        );
+      } catch {
+        if (!cancelled) {
+          setMenuNote('Catalog unavailable — connect to the API.');
+          setMenuLoading(false);
+        }
       }
-      setItemsBySlug(mapped);
 
       const cartIds = await fetchCartMenuItemIds();
-      setSelectedMeals(cartIds);
+      if (!cancelled) setSelectedMeals(cartIds);
     };
 
     void loadCatalog();
-  }, [restaurant?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurant?.id, restaurant?.business_type, catalogKey]);
 
   // Fallback if no restaurant data passed
   if (!restaurant) {
@@ -266,7 +337,7 @@ const RestaurantProfile = () => {
               key={tab.slug}
               type="button"
               onClick={() => setActiveTab(tab.slug)}
-              className={`min-w-0 flex-1 rounded-lg px-2 text-lg font-normal transition-colors ${
+              className={`min-w-0 flex-1 rounded-lg px-2 text-lg font-normal transition-colors max-[400px]:text-base ${
                 activeTab === tab.slug
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-transparent text-muted-foreground'
@@ -282,7 +353,9 @@ const RestaurantProfile = () => {
         )}
 
         {/* Catalog items — Home-style cards; time via formatDeliveryTime */}
-        {currentItems.length === 0 ? (
+        {menuLoading ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">Fetching menu…</p>
+        ) : currentItems.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">
             No {activeTabLabel.toLowerCase()} at the moment.
           </p>
@@ -308,7 +381,9 @@ const RestaurantProfile = () => {
                   />
                 </div>
                 <div className="p-3">
-                  <h3 className="truncate text-base font-semibold text-foreground">{item.name}</h3>
+                  <h3 className="truncate text-base font-semibold text-foreground" title={item.name}>
+                    {item.name}
+                  </h3>
                   <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                     <img
                       src="/assets/stopwatch 1-home.png"

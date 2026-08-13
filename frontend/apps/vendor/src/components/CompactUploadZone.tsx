@@ -27,6 +27,9 @@ interface CompactUploadZoneProps {
 /**
  * Label-less dashed upload tile used beside Menu Setup option list.
  * Reuses the same visual language as UploadField.
+ *
+ * No file-size limit here: catalog scan/upload is extract-only and is not
+ * stored on Cloudinary (unlike logo, cover, and verification documents).
  */
 export default function CompactUploadZone({
   accept = 'image/*,application/pdf',

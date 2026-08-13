@@ -230,11 +230,12 @@ export default function MenuSetup() {
         name: row.name,
         price: String(row.price),
         vendorCategory: row.vendor_category?.trim() || '',
-        portionSize: row.portion_size?.trim() || '',
         duration: copy?.showDurationField
           ? minutesToDuration(row.delivery_time)
           : '',
-        modifiers: (row.modifiers ?? []).filter((m) => m.options?.length),
+        modifiers: (row.modifiers ?? []).filter(
+          (m) => m.options?.length && m.group.toLowerCase() !== 'size',
+        ),
       })),
     );
   };
@@ -277,9 +278,6 @@ export default function MenuSetup() {
           vendor_category: item.vendorCategory.trim() || null,
           delivery_time: copy?.showDurationField
             ? durationToMinutes(item.duration)
-            : null,
-          portion_size: copy?.showSizeField
-            ? item.portionSize.trim() || null
             : null,
           modifiers: item.modifiers?.length ? item.modifiers : undefined,
         },

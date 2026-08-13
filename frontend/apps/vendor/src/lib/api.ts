@@ -233,7 +233,6 @@ export const vendorApi = {
           name: string;
           price: number;
           vendor_category?: string | null;
-          portion_size?: string | null;
           delivery_time?: number | null;
           modifiers?: Array<{
             group: string;
@@ -259,7 +258,6 @@ export const vendorApi = {
       delivery_time?: number | null;
       description?: string | null;
       image_url?: string | null;
-      portion_size?: string | null;
       modifiers?: Array<{
         group: string;
         options: Array<{ label: string; price_delta: number }>;

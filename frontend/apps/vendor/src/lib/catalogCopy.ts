@@ -14,20 +14,10 @@ export type CatalogCopy = {
   uploadEmptyLabel: string;
   categoryFieldLabel: string;
   vendorCategoryPlaceholder: string;
-  /** Restaurant: portion; Shop/Market/Pharmacy: pack size. */
-  showSizeField: boolean;
-  sizeFieldLabel: string;
-  sizeFieldPlaceholder: string;
-  sizeOptions: readonly string[];
   /** Prep / delivery estimate — restaurant only for now. */
   showDurationField: boolean;
   durationFieldLabel: string;
 };
-
-const RESTAURANT_SIZE_OPTIONS = ['Small', 'Medium', 'Large', 'Regular'] as const;
-const SHOP_SIZE_OPTIONS = ['Single', 'Pack', 'Dozen', 'Carton'] as const;
-const PHARMACY_SIZE_OPTIONS = ['Strip', 'Sachet', 'Bottle', 'Box'] as const;
-const MARKET_SIZE_OPTIONS = ['Small', 'Medium', 'Large', 'Heap', 'Bag'] as const;
 
 const BY_TYPE: Record<BusinessTypeKey, CatalogCopy> = {
   Restaurant: {
@@ -44,10 +34,6 @@ const BY_TYPE: Record<BusinessTypeKey, CatalogCopy> = {
     uploadEmptyLabel: 'Click to upload',
     categoryFieldLabel: 'Category',
     vendorCategoryPlaceholder: 'e.g. Swallow, Grill',
-    showSizeField: true,
-    sizeFieldLabel: 'Portion size',
-    sizeFieldPlaceholder: 'Select size',
-    sizeOptions: RESTAURANT_SIZE_OPTIONS,
     showDurationField: true,
     durationFieldLabel: 'Duration',
   },
@@ -65,10 +51,6 @@ const BY_TYPE: Record<BusinessTypeKey, CatalogCopy> = {
     uploadEmptyLabel: 'Click to upload',
     categoryFieldLabel: 'Category',
     vendorCategoryPlaceholder: 'e.g. Pain relief, Vitamins',
-    showSizeField: true,
-    sizeFieldLabel: 'Pack size',
-    sizeFieldPlaceholder: 'Select pack',
-    sizeOptions: PHARMACY_SIZE_OPTIONS,
     showDurationField: false,
     durationFieldLabel: 'Duration',
   },
@@ -86,10 +68,6 @@ const BY_TYPE: Record<BusinessTypeKey, CatalogCopy> = {
     uploadEmptyLabel: 'Click to upload',
     categoryFieldLabel: 'Category',
     vendorCategoryPlaceholder: 'e.g. Snacks, Household',
-    showSizeField: true,
-    sizeFieldLabel: 'Pack size',
-    sizeFieldPlaceholder: 'Select pack',
-    sizeOptions: SHOP_SIZE_OPTIONS,
     showDurationField: false,
     durationFieldLabel: 'Duration',
   },
@@ -107,10 +85,6 @@ const BY_TYPE: Record<BusinessTypeKey, CatalogCopy> = {
     uploadEmptyLabel: 'Click to upload',
     categoryFieldLabel: 'Category',
     vendorCategoryPlaceholder: 'e.g. Tomatoes, Grains',
-    showSizeField: true,
-    sizeFieldLabel: 'Pack size',
-    sizeFieldPlaceholder: 'Select pack',
-    sizeOptions: MARKET_SIZE_OPTIONS,
     showDurationField: false,
     durationFieldLabel: 'Duration',
   },

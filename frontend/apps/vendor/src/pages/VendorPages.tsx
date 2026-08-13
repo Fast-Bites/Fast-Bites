@@ -38,7 +38,7 @@ export function MenuPage() {
   return (
     <PlaceholderPage
       title="Menu"
-      description="Add products, sizes, extras, availability, and pricing for your catalog."
+      description="Add products, extras, availability, and pricing for your catalog."
     />
   );
 }

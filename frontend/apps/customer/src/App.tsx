@@ -37,6 +37,7 @@ import Cart from './pages/Cart';
 import Order from './pages/Order';
 import Logout from './pages/Logout';
 import VendorAuthComplete from './pages/VendorAuthComplete';
+import Profile from './pages/Profile';
 import './App.css';
 
 function App() {
@@ -69,6 +70,7 @@ function App() {
           <Route path="/map" element={<ProtectedRoute guard="onboarding"><Map /></ProtectedRoute>} />
           <Route path="/complete" element={<ProtectedRoute guard="onboarding"><Complete /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute guard="customer"><Home /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute guard="customer"><Profile /></ProtectedRoute>} />
           <Route path="/cart" element={<ProtectedRoute guard="customer"><Cart /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute guard="customer"><Order /></ProtectedRoute>} />
           <Route path="/meal/:id" element={<ProtectedRoute guard="customer"><MealDetails /></ProtectedRoute>} />

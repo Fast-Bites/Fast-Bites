@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api, { auth } from '../lib/api';
 import { CUSTOMER_ROLE, clearActiveRole } from '../lib/activeRole';
 import type { MenuItemWithRestaurant } from '../lib/api';
@@ -16,11 +16,17 @@ import BottomNav from '../components/BottomNav';
 import MenuOverlay from '../components/MenuOverlay';
 import OverlayChoiceModal from '../components/OverlayChoiceModal';
 import FullScreenLogoLoader from '../components/FullScreenLogoLoader';
+import {
+  catalogCacheKeys,
+  loadWithCache,
+  peekCached,
+} from '../lib/catalogCache';
 
 interface UserProfile {
   first_name?: string;
   last_name?: string;
   address?: string;
+  profile_image?: string | null;
 }
 
 interface MealDisplay {
@@ -34,7 +40,7 @@ interface MealDisplay {
   image: string;
 }
 
-// Placeholder images for meals without images - randomly assigned
+// Placeholder images for meals without images — stable per item id (cache-friendly)
 const PLACEHOLDER_IMAGES = [
   '/assets/chad-montano-MqT0asuoIcU-unsplash 2.png', // Pizza
   'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop', // Pancakes
@@ -42,12 +48,38 @@ const PLACEHOLDER_IMAGES = [
   'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop', // BBQ
 ];
 
+function placeholderForId(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) hash = (hash + id.charCodeAt(i)) % PLACEHOLDER_IMAGES.length;
+  return PLACEHOLDER_IMAGES[hash] ?? PLACEHOLDER_IMAGES[0];
+}
+
+function formatMenuItems(menuData: MenuItemWithRestaurant[]): MealDisplay[] {
+  return menuData.map((item) => ({
+    id: item.id,
+    name: item.name,
+    restaurant: item.restaurant_name ? `From ${item.restaurant_name}` : 'From Restaurant',
+    restaurant_id: item.restaurant_id,
+    unitPrice: item.price,
+    time: formatDeliveryTime(item.delivery_time),
+    price: `₦${item.price.toLocaleString()}`,
+    image: item.image_url || placeholderForId(item.id),
+  }));
+}
+
+const MENU_ITEMS_KEY = catalogCacheKeys.menuItems();
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  /** Menu open is a history entry so back from menu destinations restores it. */
+  const menuOpen = (location.state as { menuOpen?: boolean } | null)?.menuOpen === true;
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [meals, setMeals] = useState<MealDisplay[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [meals, setMeals] = useState<MealDisplay[]>(() => {
+    const cached = peekCached<MenuItemWithRestaurant[]>(MENU_ITEMS_KEY);
+    return cached?.length ? formatMenuItems(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => peekCached(MENU_ITEMS_KEY) == null);
   const [selectedMeals, setSelectedMeals] = useState<Set<string>>(new Set());
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartMessage, setCartMessage] = useState<'added' | 'removed' | null>(null);
@@ -57,35 +89,40 @@ const Home: React.FC = () => {
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchData = async () => {
-      // Fetch user profile
       const { data: profileData } = await api.getProfile(CUSTOMER_ROLE);
-      if (profileData) {
+      if (!cancelled && profileData) {
         setUser(profileData as UserProfile);
       }
 
-      // Fetch ALL menu items (default limit is 100)
-      const { data: menuData } = await api.getMenuItems();
-      if (menuData && menuData.length > 0) {
-        const formattedMeals: MealDisplay[] = menuData.map((item: MenuItemWithRestaurant) => ({
-          id: item.id,
-          name: item.name,
-          restaurant: item.restaurant_name ? `From ${item.restaurant_name}` : 'From Restaurant',
-          restaurant_id: item.restaurant_id,
-          unitPrice: item.price,
-          time: formatDeliveryTime(item.delivery_time),
-          price: `₦${item.price.toLocaleString()}`,
-          // Use image_url from DB or random placeholder
-          image: item.image_url || PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)],
-        }));
-        setMeals(formattedMeals);
+      try {
+        await loadWithCache(
+          MENU_ITEMS_KEY,
+          async () => {
+            const { data, error } = await api.getMenuItems();
+            if (error) throw new Error(error);
+            return data ?? [];
+          },
+          (menuData) => {
+            if (cancelled) return;
+            setMeals(menuData.length > 0 ? formatMenuItems(menuData) : []);
+            setLoading(false);
+          },
+        );
+      } catch {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
 
       const cartIds = await fetchCartMenuItemIds();
-      setSelectedMeals(cartIds);
+      if (!cancelled) setSelectedMeals(cartIds);
     };
-    fetchData();
+
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Track scroll position to show/hide scroll-to-top button
@@ -172,13 +209,18 @@ const Home: React.FC = () => {
       {/* 1st section - Header (Fixed) */}
       <div className={`fixed top-0 left-0 right-0 z-50 bg-background flex items-center justify-between ${responsivePx} ${responsivePt} pb-3`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden">
-            <img 
-              src={PROFILE_AVATAR_IMAGE}
-              alt="User" 
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden"
+            aria-label="Open profile"
+          >
+            <img
+              src={user?.profile_image || PROFILE_AVATAR_IMAGE}
+              alt="User"
               className="w-full h-full object-cover"
             />
-          </div>
+          </button>
           <div>
             <h2 className="text-foreground text-md">
               {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Guest' : 'Loading...'}
@@ -189,7 +231,11 @@ const Home: React.FC = () => {
           </div>
         </div>
         <button
-          onClick={() => setMenuOpen(true)}
+          onClick={() => {
+            if (!menuOpen) {
+              navigate('.', { state: { menuOpen: true } });
+            }
+          }}
           className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0"
         >
           <img src="/assets/more 1.svg" alt="Menu" className="w-4 h-4" />
@@ -273,7 +319,9 @@ const Home: React.FC = () => {
                   />
                 </div>
                 <div className="p-3">
-                  <h3 className="text-foreground font-semibold text-base truncate">{meal.name}</h3>
+                  <h3 className="text-foreground font-semibold text-base truncate" title={meal.name}>
+                    {meal.name}
+                  </h3>
                   <p className="text-muted-foreground text-xs truncate">{meal.restaurant}</p>
                   <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                     <img 
@@ -334,9 +382,9 @@ const Home: React.FC = () => {
 
       <MenuOverlay
         visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => navigate(-1)}
         user={user}
-        profileImageSrc={PROFILE_AVATAR_IMAGE}
+        profileImageSrc={user?.profile_image || PROFILE_AVATAR_IMAGE}
         onDeleteAccount={() => setDeleteAccountOpen(true)}
       />
 

@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     business_id: Optional[UUID] = None
     business_verified: Optional[bool] = None
     verification_stage: Optional[str] = None
+    profile_image: Optional[str] = None
     
     class Config:
         from_attributes = True

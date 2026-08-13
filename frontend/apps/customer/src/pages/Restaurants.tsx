@@ -13,37 +13,78 @@ import {
 } from '../lib/restaurantHours';
 import { formatRatingDisplay, resolveRating } from '../lib/restaurantDisplay';
 import { RestaurantCover } from '../components/RestaurantMedia';
+import {
+  catalogCacheKeys,
+  loadWithCache,
+  peekCached,
+} from '../lib/catalogCache';
+
+type RestaurantsCache = {
+  rows: Restaurant[];
+  listNote: string | null;
+};
+
+const RESTAURANTS_KEY = catalogCacheKeys.restaurants(20, 0);
+
+function withRatings(rows: Restaurant[]): Restaurant[] {
+  return rows.map((r) => ({ ...r, rating: resolveRating(r) }));
+}
 
 const Restaurants = () => {
   const navigate = useNavigate();
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [listNote, setListNote] = useState<string | null>(null);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
+    const cached = peekCached<RestaurantsCache>(RESTAURANTS_KEY);
+    return cached?.rows?.length ? withRatings(cached.rows) : [];
+  });
+  const [listNote, setListNote] = useState<string | null>(() => {
+    const cached = peekCached<RestaurantsCache>(RESTAURANTS_KEY);
+    return cached?.listNote ?? null;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [hoursOverlayRestaurant, setHoursOverlayRestaurant] = useState<Restaurant | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchRestaurants = async () => {
-      const response = await api.getRestaurants(20, 0);
-      if (response.error) {
-        setRestaurants([]);
-        setListNote('Restaurants unavailable — connect to the API.');
-        return;
+      try {
+        await loadWithCache(
+          RESTAURANTS_KEY,
+          async (): Promise<RestaurantsCache> => {
+            const response = await api.getRestaurants(20, 0);
+            if (response.error) {
+              return {
+                rows: [],
+                listNote: 'Restaurants unavailable — connect to the API.',
+              };
+            }
+            const rows = response.data ?? [];
+            if (rows.length === 0) {
+              return {
+                rows: [],
+                listNote: 'No restaurants in the database yet.',
+              };
+            }
+            return { rows, listNote: null };
+          },
+          (payload) => {
+            if (cancelled) return;
+            setListNote(payload.listNote);
+            setRestaurants(withRatings(payload.rows));
+          },
+        );
+      } catch {
+        if (!cancelled) {
+          setRestaurants([]);
+          setListNote('Restaurants unavailable — connect to the API.');
+        }
       }
-      const rows = response.data ?? [];
-      if (rows.length === 0) {
-        setRestaurants([]);
-        setListNote('No restaurants in the database yet.');
-        return;
-      }
-      setListNote(null);
-      setRestaurants(
-        rows.map((r) => ({
-          ...r,
-          rating: resolveRating(r),
-        })),
-      );
     };
-    fetchRestaurants();
+
+    void fetchRestaurants();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleOperatingHours = (e: MouseEvent<HTMLButtonElement>, restaurant: Restaurant) => {

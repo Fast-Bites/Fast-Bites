@@ -180,6 +180,33 @@ export const api = {
 
   getCustomerProfile: () => request(`/users/profile?role=${encodeURIComponent(CUSTOMER_ROLE)}`, {}, true),
 
+  /** Upload profile photo (JPEG/PNG/WEBP/GIF, max 5MB). Returns updated profile. */
+  uploadProfileAvatar: async (file: File, role = CUSTOMER_ROLE) => {
+    try {
+      const authHeaders = await getAuthHeaders();
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(
+        `${API_URL}/users/profile/avatar?role=${encodeURIComponent(role)}`,
+        {
+          method: 'POST',
+          headers: {
+            ...authHeaders,
+          },
+          body: formData,
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return { error: (error as { detail?: string }).detail || 'Upload failed' };
+      }
+      const data = await response.json();
+      return { data };
+    } catch {
+      return { error: 'Network error' };
+    }
+  },
+
   // Menu items - public endpoints (no auth required)
   getMenuItems: (limit = 100, offset = 0) =>
     request<MenuItemWithRestaurant[]>(`/menu/items?limit=${limit}&offset=${offset}`),

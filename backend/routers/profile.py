@@ -2,7 +2,7 @@ import logging
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
@@ -14,6 +14,7 @@ from services.jwt_auth import get_current_user
 from services.supabase_admin import delete_auth_user
 from services.role_constants import VENDOR_ROLE, LEGACY_VENDOR_ROLE, normalize_role, is_valid_role
 from services.vendor_verification import verification_stage_for_business
+from services.cloudinary_storage import upload_vendor_image
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["profile"])
@@ -58,6 +59,7 @@ def role_profile_to_response(
         business_id=business_id,
         business_verified=business_verified,
         verification_stage=verification_stage,
+        profile_image=user_role.profile_image,
     )
 
 
@@ -279,6 +281,11 @@ async def update_profile(
             if hasattr(user_role, key):
                 setattr(user_role, key, value)
 
+        if "profile_image" in update_data:
+            account = await get_user_account(db, user_id)
+            if account:
+                account.profile_image = update_data["profile_image"]
+
         await db.commit()
         await db.refresh(user_role)
 
@@ -297,6 +304,56 @@ async def update_profile(
     except Exception as e:
         log.error(f"Update profile failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to update profile")
+
+
+@router.post("/profile/avatar", response_model=UserResponse)
+async def upload_profile_avatar(
+    file: UploadFile = File(...),
+    role: str = Query("customer", description="Profile role for this avatar"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a profile photo (5MB max). Persists URL on the role profile."""
+    try:
+        normalized_role = normalize_role(role) or "customer"
+        if not is_valid_role(normalized_role):
+            raise HTTPException(status_code=400, detail="Invalid role")
+
+        user_id = UUID(current_user["id"])
+        email = current_user.get("email")
+        user_role = await get_role_profile(db, user_id, normalized_role)
+        if not user_role or not email:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        uploaded = await upload_vendor_image(
+            file,
+            "avatar",
+            str(user_id),
+        )
+        image_url = uploaded["url"]
+        user_role.profile_image = image_url
+        account = await get_user_account(db, user_id)
+        if account:
+            account.profile_image = image_url
+
+        await db.commit()
+        await db.refresh(user_role)
+        log.info("Profile avatar updated for %s (%s)", email, normalized_role)
+
+        business_id, business_verified, verification_stage = await get_vendor_context(db, user_role)
+        return role_profile_to_response(
+            user_role,
+            email,
+            business_id=business_id,
+            business_verified=business_verified,
+            verification_stage=verification_stage,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        log.error("Profile avatar upload failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to upload profile photo")
 
 
 @router.delete("/profile")

@@ -24,7 +24,6 @@ Return JSON only:
       "name": "string",
       "price": 0,
       "vendor_category": "string or null",
-      "portion_size": "string or null",
       "delivery_time_minutes": null,
       "modifiers": []
     }
@@ -40,7 +39,6 @@ Return JSON only:
       "name": "string",
       "price": 0,
       "vendor_category": "string or null",
-      "portion_size": "string or null",
       "delivery_time_minutes": null,
       "modifiers": [
         {
@@ -67,8 +65,6 @@ _MODIFIER_GROUP_CANONICAL = {
     "addon": "extras",
     "add ons": "extras",
     "add-ons": "extras",
-    "size": "size",
-    "sizes": "size",
 }
 
 
@@ -84,7 +80,6 @@ def canonical_modifier_group(raw: str) -> str | None:
         ("topping", "extras"),
         ("add-on", "extras"),
         ("addon", "extras"),
-        ("size", "size"),
     ):
         if needle in key:
             return canon
@@ -123,17 +118,11 @@ def _normalize_modifiers(raw_mods: Any) -> list[dict[str, Any]]:
             bucket.append({"label": label, "price_delta": delta})
             seen.add(label.lower())
 
-    order = ("protein", "extras", "size")
-    result = [
+    order = ("protein", "extras")
+    return [
         {"group": g, "options": by_group[g]}
         for g in order
         if g in by_group and by_group[g]
-    ]
-    # Size only when varieties exist
-    return [
-        row
-        for row in result
-        if row["group"] != "size" or len(row["options"]) >= 2
     ]
 
 
@@ -147,9 +136,9 @@ Business type: Pharmacy.
 {EXTRACT_JSON_SHAPE}
 Rules:
 - price must be a number in Naira (no currency symbol)
-- name should include strength when visible (e.g. "Paracetamol 500mg")
+- name should include strength and pack form when visible (e.g. "Paracetamol 500mg — Strip")
+- Different pack forms (Strip, Sachet, Bottle, Box) are SEPARATE items with their own price — never a size/pack modifier
 - vendor_category is the section label (e.g. Pain relief, Vitamins, OTC)
-- portion_size means pack form when visible: Strip, Sachet, Bottle, Box, or pack count — otherwise null
 - delivery_time_minutes must always be null for pharmacies
 - modifiers must always be []
 - skip headers, addresses, license text, and non-product lines
@@ -163,7 +152,7 @@ Business type: Shop.
 Rules:
 - price must be a number in Naira (no currency symbol)
 - vendor_category is the aisle/section label (e.g. Groceries, Household, Electronics)
-- portion_size means pack size when visible: Single, Pack, Dozen, Carton, or weight/count — otherwise null
+- Different pack sizes (Single, Pack, Dozen, Carton, 50cl, 75cl) are SEPARATE items with their own price — put the size in the name (e.g. "Coke — 50cl")
 - delivery_time_minutes must always be null for shops
 - modifiers must always be []
 - skip headers, store info, and non-product lines
@@ -177,7 +166,7 @@ Business type: Market.
 Rules:
 - price must be a number in Naira (no currency symbol)
 - vendor_category is the produce group (e.g. Produce, Grains, Meat & fish)
-- portion_size means sale unit when visible: Small, Medium, Large, Heap, Bag, or weight — otherwise null
+- Different sale units (Small, Medium, Large, Heap, Bag) are SEPARATE items with their own price — put the unit in the name
 - delivery_time_minutes must always be null for markets
 - modifiers must always be []
 - skip headers and non-product lines
@@ -192,13 +181,12 @@ Rules:
 - price must be a number in Naira (no currency symbol)
 - vendor_category is the menu section as written (e.g. Swallow, Grill, Drinks, Desserts, Pastries)
 - There is NO Bakery browse tab. Keep pastry/bakery/confectionery section names as vendor_category; they map later into Food, Desserts, or Sides
-- portion_size is portion when visible: Small, Medium, Large, Regular — otherwise null
+- NEVER use size modifiers. Each size/portion is its own menu item with its own price (e.g. "Pizza — Small", "Pizza — Medium", "Pizza — Large"; "Malt — 50cl", "Malt — 75cl")
 - delivery_time_minutes is prep/ready time in minutes when stated; otherwise null
-- Extract per-item customizations into modifiers when listed (choice of protein, extras, sauces, toppings, size)
-- modifier.group must be only: "protein", "extras", or "size"
+- Extract per-item customizations into modifiers when listed (choice of protein, extras, sauces, toppings only)
+- modifier.group must be only: "protein" or "extras"
 - Put sauces, toppings, and add-ons under "extras" (do not use a separate sauce group)
-- Put size varieties (Small/Medium/Large with different prices) under modifiers group "size" only when 2+ sizes are listed for that item
-- If only one portion/size is shown, set portion_size and leave size modifiers empty
+- Do not emit a "size" modifier group under any circumstance
 - Protein as a full dish (e.g. full chicken, grilled fish plate) is its own item — not a modifier
 - Protein as an add-on choice for a meal (e.g. goat, beef, fish with swallow) goes in modifiers group "protein"
 - price_delta is the add-on cost in Naira (0 if included / no extra charge shown)
@@ -244,14 +232,12 @@ def _normalize_items(raw: Any, *, business_type: str) -> list[dict[str, Any]]:
                 delivery_time = None
 
         vendor_category = row.get("vendor_category") or row.get("category")
-        portion = row.get("portion_size") or row.get("pack_size")
         modifiers = _normalize_modifiers(row.get("modifiers")) if allow_duration else []
         out.append(
             {
                 "name": name,
                 "price": price,
                 "vendor_category": str(vendor_category).strip() if vendor_category else None,
-                "portion_size": str(portion).strip() if portion else None,
                 "delivery_time": delivery_time,
                 "modifiers": modifiers,
             }

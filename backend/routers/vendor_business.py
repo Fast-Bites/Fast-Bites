@@ -4,11 +4,12 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.restaurant import Restaurant
+from models.restaurant_hours import RestaurantHours
 from routers.profile import get_role_profile, normalize_phone_number
 from schemas.vendor_business import (
     BusinessRegistrationRequest,
@@ -29,6 +30,7 @@ from services.catalog_extract import extract_catalog_items_from_upload
 from services.category_mapping import resolve_platform_category_id
 from services.cloudinary_storage import upload_vendor_image
 from services.jwt_auth import get_current_user
+from services.restaurant_hours_util import parse_hhmm
 from services.role_constants import VENDOR_ROLE
 from services.vendor_verification import verification_stage_for_business
 
@@ -243,6 +245,29 @@ async def submit_business_registration(
         if normalized_phone:
             user_role.phone = normalized_phone
 
+        open_time = parse_hhmm(payload.opening_time)
+        close_time = parse_hhmm(payload.closing_time)
+        if open_time and close_time:
+            open_days = set(payload.working_days) if payload.working_days else set(range(7))
+            open_days = {d for d in open_days if 0 <= d <= 6}
+            if not open_days:
+                open_days = set(range(7))
+
+            await db.execute(
+                delete(RestaurantHours).where(RestaurantHours.restaurant_id == business.id)
+            )
+            for day in range(7):
+                is_open = day in open_days
+                db.add(
+                    RestaurantHours(
+                        restaurant_id=business.id,
+                        day_of_week=day,
+                        open_time=open_time if is_open else None,
+                        close_time=close_time if is_open else None,
+                        is_closed=not is_open,
+                    )
+                )
+
         await db.commit()
         await db.refresh(business)
 
@@ -302,18 +327,15 @@ def _norm_text(value: str | None) -> str:
 _MODIFIER_GROUP_LABELS = {
     "protein": "Protein",
     "extras": "Extras",
-    "size": "Size",
 }
 
 
 def _normalize_create_modifiers(
     item: CatalogItemCreate,
 ) -> list[tuple[str, list[tuple[str, float]]]]:
-    """Return [(display_name, [(label, price_delta), ...]), ...] for Protein/Extras/Size.
+    """Return [(display_name, [(label, price_delta), ...]), ...] for Protein/Extras.
 
-    Size is saved only when there are multiple size varieties (2+ options).
-    A single portion/pack selection is not persisted as a size modifier, and
-    nothing is written to product.description.
+    Size variants are separate products — size modifier groups are ignored.
     """
     from services.catalog_extract import canonical_modifier_group
 
@@ -331,13 +353,8 @@ def _normalize_create_modifiers(
             bucket.append((label, float(opt.price_delta or 0)))
             seen.add(label.lower())
 
-    # Single portion_size on the draft is display-only — not a size variety set.
-    size_opts = by_group.get("size") or []
-    if len(size_opts) < 2:
-        by_group.pop("size", None)
-
     out: list[tuple[str, list[tuple[str, float]]]] = []
-    for key in ("protein", "extras", "size"):
+    for key in ("protein", "extras"):
         opts = by_group.get(key)
         if opts:
             out.append((_MODIFIER_GROUP_LABELS[key], opts))
@@ -355,7 +372,6 @@ def _item_fingerprint(
     """Multi-field identity for same food at same restaurant (not name-only)."""
     protein: list[str] = []
     extras: list[str] = []
-    sizes: list[str] = []
     for group_name, options in modifiers:
         labels = sorted(_norm_text(label) for label, _ in options)
         key = group_name.lower()
@@ -363,8 +379,6 @@ def _item_fingerprint(
             protein = labels
         elif key == "extras":
             extras = labels
-        elif key == "size":
-            sizes = labels
     return (
         _norm_text(name),
         round(float(price), 2),
@@ -372,7 +386,6 @@ def _item_fingerprint(
         delivery_time if delivery_time is not None else -1,
         tuple(protein),
         tuple(extras),
-        tuple(sizes),
     )
 
 
@@ -401,6 +414,9 @@ async def _existing_product_fingerprints(db: AsyncSession, restaurant_id: UUID) 
         pid = str(product_id)
         bucket = mods_by_product.setdefault(pid, {})
         gname = (group_name or "").strip() or "Extras"
+        # Ignore legacy Size groups if any remain before migration runs.
+        if gname.lower() == "size" or "size" in gname.lower():
+            continue
         opts = bucket.setdefault(gname, [])
         if label:
             opts.append((str(label), 0.0))
@@ -411,8 +427,6 @@ async def _existing_product_fingerprints(db: AsyncSession, restaurant_id: UUID) 
         normalized: list[tuple[str, list[tuple[str, float]]]] = []
         for name, opts in mod_map.items():
             if not opts:
-                continue
-            if name.lower() == "size" and len(opts) < 2:
                 continue
             normalized.append((name, opts))
         fingerprints.add(

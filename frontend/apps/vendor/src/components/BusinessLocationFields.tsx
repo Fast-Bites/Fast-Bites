@@ -20,6 +20,10 @@ interface BusinessLocationFieldsProps {
   onLongitudeChange: (value: string) => void;
 }
 
+/**
+ * Address + landmark only in the UI. Lat/lng are filled from the map picker
+ * and sent to the API without showing coordinate fields to the vendor.
+ */
 export default function BusinessLocationFields({
   address,
   landmark,
@@ -82,28 +86,6 @@ export default function BusinessLocationFields({
             required
           />
         </FormField>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <FormField label="Latitude">
-            <FormTextInput
-              type="text"
-              inputMode="decimal"
-              value={latitude}
-              onChange={(event) => onLatitudeChange(event.target.value)}
-              placeholder="6.524400"
-            />
-          </FormField>
-
-          <FormField label="Longitude">
-            <FormTextInput
-              type="text"
-              inputMode="decimal"
-              value={longitude}
-              onChange={(event) => onLongitudeChange(event.target.value)}
-              placeholder="3.379200"
-            />
-          </FormField>
-        </div>
       </div>
 
       <LocationMapOverlay

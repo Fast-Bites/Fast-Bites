@@ -384,6 +384,9 @@ async def get_menu_item_modifiers(
     )
     groups = []
     for gid, gname in groups_result.all():
+        # Sizes are separate products — never expose Size modifier groups.
+        if "size" in (gname or "").lower():
+            continue
         opts_result = await db.execute(
             text(
                 """

@@ -137,23 +137,21 @@ export default function VerifyBusinessDocumentation() {
   }
 
   return (
-    <RegistrationPageShell>
-      <div className="mb-4 flex justify-end">
+    <RegistrationPageShell fillViewport>
+      <div className="mb-4 flex shrink-0 justify-end">
         <RegistrationSkipButton onClick={() => void goToMenuSetup(true)} />
       </div>
 
       <RegistrationPageTitle
         title="Documentation"
         subtitle={DOCUMENTATION_PAGE_SUBTITLE}
-        className="mb-10"
+        className="mb-6 shrink-0 max-[500px]:mb-4"
       />
 
-      <section className="flex min-h-0 flex-1 flex-col">
-        <BusinessDocumentationForm
-          businessType={businessType}
-          onSubmitSuccess={() => void goToMenuSetup(false)}
-        />
-      </section>
+      <BusinessDocumentationForm
+        businessType={businessType}
+        onSubmitSuccess={() => void goToMenuSetup(false)}
+      />
     </RegistrationPageShell>
   );
 }

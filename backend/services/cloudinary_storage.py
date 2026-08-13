@@ -24,7 +24,7 @@ ALLOWED_MENU_FILE_CONTENT_TYPES = ALLOWED_CONTENT_TYPES | {
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
-ALLOWED_KINDS = {"logo", "cover", "document", "menu"}
+ALLOWED_KINDS = {"logo", "cover", "document", "menu", "avatar"}
 
 
 def _normalize_cloudinary_url(raw: str) -> str:
@@ -127,6 +127,8 @@ def upload_folder_for(
         return f"{base}/{safe_user_id}/covers"
     if kind == "menu":
         return f"{base}/{safe_user_id}/menu"
+    if kind == "avatar":
+        return f"{base}/{safe_user_id}/avatar"
 
     safe_key = re.sub(r"[^a-zA-Z0-9_-]", "", document_key or "misc")
     return f"{base}/{safe_user_id}/documents/{safe_key}"
@@ -156,6 +158,7 @@ async def upload_vendor_image(
     elif kind == "menu":
         allowed_types = ALLOWED_MENU_FILE_CONTENT_TYPES
     else:
+        # logo, cover, avatar
         allowed_types = ALLOWED_CONTENT_TYPES
     if content_type not in allowed_types:
         if kind == "document":
@@ -170,6 +173,8 @@ async def upload_vendor_image(
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
 
+    # Stored uploads only (logo / cover / verification docs / product menu images / avatar).
+    # Catalog extract uses /catalog-extract and never hits this path — no size cap there.
     is_raw_menu_file = kind == "menu" and content_type not in ALLOWED_CONTENT_TYPES
     use_document_limits = kind == "document" or is_raw_menu_file
     max_bytes = MAX_DOCUMENT_BYTES if use_document_limits else MAX_IMAGE_BYTES
@@ -192,7 +197,7 @@ async def upload_vendor_image(
     public_id = None
     if kind == "menu" and menu_item_name:
         public_id = _slugify(menu_item_name)
-    elif kind in {"logo", "cover"}:
+    elif kind in {"logo", "cover", "avatar"}:
         public_id = kind
 
     try:
