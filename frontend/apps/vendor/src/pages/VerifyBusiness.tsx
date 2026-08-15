@@ -18,6 +18,7 @@ import { vendorApi, vendorAuth } from '@/lib/api';
 import BusinessActiveHoursFields, {
   DEFAULT_ACTIVE_HOURS,
   activeHoursToPayload,
+  activeHoursValidationError,
   type ActiveHoursValue,
 } from '@/components/BusinessActiveHoursFields';
 import BusinessLocationFields from '@/components/BusinessLocationFields';
@@ -54,13 +55,7 @@ function validateStep(
         required(values.businessOwner, 'Business owner') ??
         required(values.businessType, 'Business type');
       if (base) return base;
-      if (!values.activeHours.workingDays) {
-        return 'Working days is required.';
-      }
-      if (!activeHoursToPayload(values.activeHours)) {
-        return 'Enter valid operating hours (e.g. 9:00 am to 10:00 pm).';
-      }
-      return null;
+      return activeHoursValidationError(values.activeHours);
     }
     case 2:
       return (
@@ -217,6 +212,13 @@ export default function VerifyBusiness() {
       openingTime: hours?.opening_time ?? null,
       closingTime: hours?.closing_time ?? null,
       workingDays: hours?.working_days ?? null,
+      hourRanges:
+        hours?.hour_ranges.map((range) => ({
+          startDay: range.start_day,
+          endDay: range.end_day,
+          openingTime: range.opening_time,
+          closingTime: range.closing_time,
+        })) ?? null,
       bankName,
       accountNumber,
       accountName,

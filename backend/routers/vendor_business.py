@@ -66,6 +66,20 @@ async def _get_vendor_business(db: AsyncSession, user_id: UUID) -> Restaurant:
     return business
 
 
+def _business_registration_summary(business: Restaurant) -> BusinessRegistrationSummary:
+    return BusinessRegistrationSummary(
+        business_id=business.id,
+        business_name=business.name,
+        business_owner=(business.owner_name or "").strip() or None,
+        business_type=business.business_type or "",
+        business_verified=business.business_verified,
+        verification_stage=verification_stage_for_business(business),
+        documents_submitted=bool(business.verification_documents),
+        documentation_skipped=bool(business.documentation_skipped_at),
+        catalog_setup_completed=bool(business.catalog_setup_completed_at),
+    )
+
+
 async def upload_image(
     kind: str = Form(...),
     file: UploadFile = File(...),
@@ -116,16 +130,7 @@ async def get_business_registration(
     if not business.business_type:
         raise HTTPException(status_code=404, detail="Business registration not found")
 
-    return BusinessRegistrationSummary(
-        business_id=business.id,
-        business_name=business.name,
-        business_type=business.business_type,
-        business_verified=business.business_verified,
-        verification_stage=verification_stage_for_business(business),
-        documents_submitted=bool(business.verification_documents),
-        documentation_skipped=bool(business.documentation_skipped_at),
-        catalog_setup_completed=bool(business.catalog_setup_completed_at),
-    )
+    return _business_registration_summary(business)
 
 
 async def skip_documentation(
@@ -146,16 +151,7 @@ async def skip_documentation(
         user_id,
         "already recorded" if already else "saved",
     )
-    return BusinessRegistrationSummary(
-        business_id=business.id,
-        business_name=business.name,
-        business_type=business.business_type or "",
-        business_verified=business.business_verified,
-        verification_stage=verification_stage_for_business(business),
-        documents_submitted=bool(business.verification_documents),
-        documentation_skipped=bool(business.documentation_skipped_at),
-        catalog_setup_completed=bool(business.catalog_setup_completed_at),
-    )
+    return _business_registration_summary(business)
 
 
 async def complete_catalog_setup(
@@ -176,16 +172,7 @@ async def complete_catalog_setup(
         user_id,
         "already recorded" if already else "saved",
     )
-    return BusinessRegistrationSummary(
-        business_id=business.id,
-        business_name=business.name,
-        business_type=business.business_type or "",
-        business_verified=business.business_verified,
-        verification_stage=verification_stage_for_business(business),
-        documents_submitted=bool(business.verification_documents),
-        documentation_skipped=bool(business.documentation_skipped_at),
-        catalog_setup_completed=bool(business.catalog_setup_completed_at),
-    )
+    return _business_registration_summary(business)
 
 
 async def submit_business_registration(
@@ -247,23 +234,46 @@ async def submit_business_registration(
 
         open_time = parse_hhmm(payload.opening_time)
         close_time = parse_hhmm(payload.closing_time)
-        if open_time and close_time:
+
+        # day_of_week -> (open_time, close_time); later ranges overwrite earlier on overlap
+        day_schedule: dict[int, tuple] = {}
+
+        if payload.hour_ranges:
+            for schedule in payload.hour_ranges:
+                range_open = parse_hhmm(schedule.opening_time)
+                range_close = parse_hhmm(schedule.closing_time)
+                if not range_open or not range_close:
+                    continue
+                start = schedule.start_day
+                end = schedule.end_day
+                if start <= end:
+                    days = range(start, end + 1)
+                else:
+                    days = list(range(start, 7)) + list(range(0, end + 1))
+                for day in days:
+                    if 0 <= day <= 6:
+                        day_schedule[day] = (range_open, range_close)
+        elif open_time and close_time:
             open_days = set(payload.working_days) if payload.working_days else set(range(7))
             open_days = {d for d in open_days if 0 <= d <= 6}
             if not open_days:
                 open_days = set(range(7))
+            for day in open_days:
+                day_schedule[day] = (open_time, close_time)
 
+        if day_schedule:
             await db.execute(
                 delete(RestaurantHours).where(RestaurantHours.restaurant_id == business.id)
             )
             for day in range(7):
-                is_open = day in open_days
+                times = day_schedule.get(day)
+                is_open = times is not None
                 db.add(
                     RestaurantHours(
                         restaurant_id=business.id,
                         day_of_week=day,
-                        open_time=open_time if is_open else None,
-                        close_time=close_time if is_open else None,
+                        open_time=times[0] if is_open else None,
+                        close_time=times[1] if is_open else None,
                         is_closed=not is_open,
                     )
                 )

@@ -36,15 +36,17 @@ export function FormField({
     <label
       className={[formFieldWrapperClassName, className].filter(Boolean).join(' ')}
     >
-      <span className={formLabelClassName}>
-        {required ? (
-          <span className="text-red-500" aria-hidden="true">
-            *{' '}
-          </span>
-        ) : null}
-        {label}
-        {labelNote ? <span className={formLabelNoteClassName}> {labelNote}</span> : null}
-      </span>
+      {label ? (
+        <span className={formLabelClassName}>
+          {required ? (
+            <span className="text-red-500" aria-hidden="true">
+              *{' '}
+            </span>
+          ) : null}
+          {label}
+          {labelNote ? <span className={formLabelNoteClassName}> {labelNote}</span> : null}
+        </span>
+      ) : null}
       {children}
       {hint}
     </label>
@@ -85,7 +87,7 @@ export function FormCurrencyInput({
       <span className="flex shrink-0 items-center px-3 text-base text-gray-400 max-[500px]:px-2 max-[500px]:text-sm" aria-hidden>
         {currencySymbol}
       </span>
-      <span className="h-5 w-px shrink-0 bg-gray-300 max-[500px]:h-4" aria-hidden />
+      <span className="h-6 w-[2px] shrink-0 bg-gray-400 max-[500px]:h-5" aria-hidden />
       <input
         {...props}
         type="text"

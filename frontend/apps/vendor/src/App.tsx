@@ -11,7 +11,15 @@ import VerifyBusinessDocumentationProcessing from '@/pages/VerifyBusinessDocumen
 import MenuSetup from '@/pages/MenuSetup';
 import VendorEntryRedirect from '@/pages/VendorEntryRedirect';
 import CustomerSignInRedirect from '@/pages/CustomerSignInRedirect';
-import Dashboard, { HoursPage, MenuPage, OrdersPage } from '@/pages/VendorPages';
+import Dashboard, {
+  AddMenuPage,
+  AnalyticsPage,
+  InboxPage,
+  MenuPage,
+  OrderDetailsPage,
+  OrdersPage,
+  ReviewPage,
+} from '@/pages/VendorPages';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
@@ -92,8 +100,15 @@ export default function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/details/:orderId" element={<OrderDetailsPage />} />
+            <Route path="/orders/details" element={<OrderDetailsPage />} />
             <Route path="/menu" element={<MenuPage />} />
-            <Route path="/hours" element={<HoursPage />} />
+            <Route path="/menu/add" element={<AddMenuPage />} />
+            <Route path="/menu/edit/:menuId" element={<AddMenuPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/review" element={<ReviewPage />} />
+            <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/hours" element={<Navigate to="/dashboard" replace />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

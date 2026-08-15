@@ -13,7 +13,7 @@ except Exception:
     # Windows without tzdata package — Lagos is UTC+1 (WAT), no DST
     APP_TZ = timezone(timedelta(hours=1))
 # Matches Python weekday(): Monday=0 … Sunday=6
-DAY_LABELS = ("Mon", "Tue", "Wed", "Thurs", "Fri", "Sat", "Sun")
+DAY_LABELS = ("Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun")
 FULL_DAY_LABELS = (
     "Monday",
     "Tuesday",

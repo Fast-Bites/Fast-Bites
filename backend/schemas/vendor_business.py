@@ -5,6 +5,15 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class HoursScheduleRange(BaseModel):
+    """Inclusive weekday range Mon=0 … Sun=6 with open/close times (24h HH:MM)."""
+
+    start_day: int = Field(ge=0, le=6)
+    end_day: int = Field(ge=0, le=6)
+    opening_time: str
+    closing_time: str
+
+
 class BusinessRegistrationRequest(BaseModel):
     business_name: str = Field(min_length=1)
     business_owner: str = Field(min_length=1)
@@ -18,9 +27,10 @@ class BusinessRegistrationRequest(BaseModel):
     landmark: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    opening_time: Optional[str] = None  # "HH:MM" or "HH:MM:SS"
+    opening_time: Optional[str] = None  # "HH:MM" or "HH:MM:SS" (legacy flat window)
     closing_time: Optional[str] = None
-    working_days: Optional[list[int]] = None  # Mon=0 … Sun=6
+    working_days: Optional[list[int]] = None  # Mon=0 … Sun=6 (legacy)
+    hour_ranges: Optional[list[HoursScheduleRange]] = None
     bank_name: Optional[str] = None
     account_number: Optional[str] = None
     account_holder_name: Optional[str] = None
@@ -38,6 +48,7 @@ class BusinessRegistrationResponse(BaseModel):
 class BusinessRegistrationSummary(BaseModel):
     business_id: UUID
     business_name: str
+    business_owner: Optional[str] = None
     business_type: str
     business_verified: bool
     verification_stage: str

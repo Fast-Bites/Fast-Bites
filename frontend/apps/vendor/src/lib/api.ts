@@ -24,6 +24,7 @@ export interface BusinessRegistrationResult {
 export interface BusinessRegistrationSummary {
   business_id: string;
   business_name: string;
+  business_owner?: string | null;
   business_type: string;
   business_verified: boolean;
   verification_stage: 'registration' | 'documentation' | 'pending_review' | 'verified';
