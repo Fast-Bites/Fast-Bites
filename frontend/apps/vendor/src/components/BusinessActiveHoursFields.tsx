@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Plus } from 'lucide-react';
 import { FormSelect } from '@/components/FormField';
 
@@ -58,14 +58,35 @@ export const DEFAULT_ACTIVE_HOURS: ActiveHoursValue = {
   ranges: [createEmptyHoursRange()],
 };
 
+/** Display form always `HH:MM` with zero-padding (12h clock digits). */
+function formatTimeDisplay(hours: string, minutes: string): string {
+  return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+}
+
+/** On blur: force `HH:MM` with zeros for any missing digit. Hours 1–12, minutes 0–59. */
+function finalizeTimeInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (!digits) return '';
+
+  let hour = Number(digits.slice(0, Math.min(2, digits.length)) || '0');
+  let minute = digits.length > 2 ? Number(digits.slice(2).padEnd(2, '0')) : 0;
+
+  if (!Number.isFinite(hour) || hour < 1) hour = 1;
+  if (hour > 12) hour = 12;
+  if (!Number.isFinite(minute) || minute < 0) minute = 0;
+  if (minute > 59) minute = 59;
+
+  return formatTimeDisplay(String(hour), String(minute));
+}
+
 /** Parse a 12h clock string like `9:00` / `09:30` with am/pm → 24h `HH:MM`. */
 function to24h(timeRaw: string, meridiem: Meridiem): string | null {
-  const cleaned = timeRaw.trim().replace(/\s/g, '');
-  const match = /^(\d{1,2})(?::(\d{2}))?$/.exec(cleaned);
+  const finalized = finalizeTimeInput(timeRaw);
+  const match = /^(\d{2}):(\d{2})$/.exec(finalized);
   if (!match) return null;
 
   let hour = Number(match[1]);
-  const minute = match[2] != null ? Number(match[2]) : 0;
+  const minute = Number(match[2]);
   if (!Number.isInteger(hour) || hour < 1 || hour > 12) return null;
   if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
 
@@ -184,8 +205,8 @@ interface BusinessActiveHoursFieldsProps {
 }
 
 /**
- * Single bordered control: [ time ] | [ am/pm ]
- * Dropdown shows only the alternate option (am→pm, pm→am), primary text, with a border.
+ * Single bordered control: [ HH : MM ] | [ am/pm ]
+ * Permanent colon; digits only; hour 01–12; minutes 00–59; missing digits zero-filled on blur.
  */
 function TimeWithMeridiem({
   time,
@@ -202,8 +223,13 @@ function TimeWithMeridiem({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const hourRef = useRef<HTMLInputElement>(null);
+  const minuteRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const alternate: Meridiem = meridiem === 'am' ? 'pm' : 'am';
+
+  const finalized = time.includes(':') ? time : finalizeTimeInput(time);
+  const [hourPart = '', minutePart = ''] = finalized.split(':');
 
   useEffect(() => {
     if (!open) return;
@@ -226,20 +252,129 @@ function TimeWithMeridiem({
     };
   }, [open]);
 
+  const onHourChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    if (!digits) {
+      onTimeChange(minutePart ? `:${minutePart}` : '');
+      return;
+    }
+
+    let hours = digits;
+    if (hours.length === 1 && Number(hours) > 1) {
+      hours = hours.padStart(2, '0');
+    } else if (hours.length === 2) {
+      let h = Number(hours);
+      if (h === 0) h = 1;
+      if (h > 12) h = 12;
+      hours = String(h).padStart(2, '0');
+    }
+
+    const minutes = minutePart.replace(/\D/g, '').slice(0, 2);
+    onTimeChange(minutes ? `${hours}:${minutes}` : `${hours}:`);
+
+    if (hours.length === 2) {
+      minuteRef.current?.focus();
+      minuteRef.current?.select();
+    }
+  };
+
+  const onMinuteChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    const hours = hourPart.replace(/\D/g, '').slice(0, 2);
+
+    if (!digits) {
+      onTimeChange(hours ? `${hours}:` : '');
+      return;
+    }
+
+    let minutes = digits;
+    if (minutes.length === 1 && Number(minutes) > 5) {
+      minutes = minutes.padStart(2, '0');
+    } else if (minutes.length === 2) {
+      let m = Number(minutes);
+      if (m > 59) m = 59;
+      minutes = String(m).padStart(2, '0');
+    }
+
+    onTimeChange(`${hours || '0'}:${minutes}`);
+  };
+
+  const onHourKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowRight' && (event.currentTarget.selectionStart ?? 0) >= hourPart.length) {
+      event.preventDefault();
+      minuteRef.current?.focus();
+      minuteRef.current?.setSelectionRange(0, 0);
+    }
+  };
+
+  const onMinuteKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Backspace' && !minutePart) {
+      event.preventDefault();
+      hourRef.current?.focus();
+      const len = hourPart.length;
+      hourRef.current?.setSelectionRange(len, len);
+      return;
+    }
+    if (event.key === 'ArrowLeft' && (event.currentTarget.selectionStart ?? 0) === 0) {
+      event.preventDefault();
+      hourRef.current?.focus();
+      const len = hourPart.length;
+      hourRef.current?.setSelectionRange(len, len);
+    }
+  };
+
+  const blurFinalize = () => {
+    // Defer so focus moving hour→minute does not finalize mid-edit.
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      if (active === hourRef.current || active === minuteRef.current) return;
+      if (!time.trim()) return;
+      onTimeChange(finalizeTimeInput(time));
+    }, 0);
+  };
+
   return (
     <div ref={rootRef} className="relative w-full min-w-0">
       <div className="flex w-full items-stretch overflow-hidden rounded-lg border border-gray-400 bg-white transition focus-within:border-primary max-[500px]:rounded-md">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={time}
-          onChange={(event) => onTimeChange(event.target.value)}
-          placeholder="--:--"
-          aria-label={`${ariaLabel} time`}
-          className="min-w-0 flex-1 border-0 bg-transparent px-5 py-3 text-center text-base text-black outline-none placeholder:text-gray-400 [color-scheme:light] max-[500px]:px-3 max-[500px]:py-2 max-[500px]:text-sm"
-          required
-        />
-        <span className="my-auto h-5 w-px shrink-0 bg-gray-300 max-[500px]:h-4" aria-hidden />
+        <div
+          className="flex min-w-0 flex-1 items-center justify-center gap-0.5 px-3 py-3 max-[500px]:px-2 max-[500px]:py-2"
+          onClick={() => hourRef.current?.focus()}
+        >
+          <input
+            ref={hourRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={hourPart}
+            onChange={(event) => onHourChange(event.target.value)}
+            onKeyDown={onHourKeyDown}
+            onBlur={blurFinalize}
+            placeholder="--"
+            maxLength={2}
+            aria-label={`${ariaLabel} hour`}
+            className="w-[2ch] border-0 bg-transparent p-0 text-center text-base text-black outline-none placeholder:text-gray-400 max-[500px]:text-sm"
+            required
+          />
+          <span className="select-none text-base font-medium text-black max-[500px]:text-sm" aria-hidden>
+            :
+          </span>
+          <input
+            ref={minuteRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={minutePart}
+            onChange={(event) => onMinuteChange(event.target.value)}
+            onKeyDown={onMinuteKeyDown}
+            onBlur={blurFinalize}
+            placeholder="--"
+            maxLength={2}
+            aria-label={`${ariaLabel} minutes`}
+            className="w-[2ch] border-0 bg-transparent p-0 text-center text-base text-black outline-none placeholder:text-gray-400 max-[500px]:text-sm"
+            required
+          />
+        </div>
+        <span className="my-auto h-5 w-px shrink-0 bg-gray-700 max-[500px]:h-4" aria-hidden />
         <button
           type="button"
           aria-label={`${ariaLabel} am or pm`}
@@ -298,7 +433,7 @@ function DaySelect({
       required
     >
       <option value="" disabled>
-        Select days
+        Select day
       </option>
       {WEEKDAY_OPTIONS.map((opt) => (
         <option key={opt.value} value={opt.value}>
